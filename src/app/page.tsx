@@ -1,65 +1,208 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSocket } from '@/hooks/useSocket';
+import { usePlayerStore } from '@/stores/playerStore';
+import { useRoomStore } from '@/stores/roomStore';
+
+export default function HomePage() {
+  const router = useRouter();
+  const socket = useSocket();
+  const { playerName, setPlayerName, setPlayer } = usePlayerStore();
+  const { setRoom } = useRoomStore();
+
+  const [name, setName] = useState(playerName || '');
+  const [joinCode, setJoinCode] = useState('');
+  const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleCreate = () => {
+    if (!name.trim()) {
+      setError('Entre ton nom !');
+      return;
+    }
+    setLoading(true);
+    setPlayerName(name.trim());
+
+    socket.emit('room:create', { playerName: name.trim() });
+
+    socket.once('room:created', ({ roomCode, playerId, sessionToken }) => {
+      setPlayer(playerId, sessionToken, roomCode);
+      setRoom({
+        code: roomCode,
+        hostId: playerId,
+        players: [{
+          id: playerId,
+          name: name.trim(),
+          isBot: false,
+          isConnected: true,
+          isReady: false,
+          cardCount: 0,
+          bet: null,
+          tricksWon: 0,
+          pilis: 0,
+          seatIndex: 0,
+        }],
+        settings: {
+          maxPlayers: 8,
+          includeExpertMissions: false,
+          turnTimerSeconds: 30,
+          botDifficulty: 'medium',
+          piliLimit: 6,
+        },
+        isGameStarted: false,
+      });
+      router.push(`/room/${roomCode}`);
+    });
+
+    socket.once('room:error', ({ message }) => {
+      setError(message);
+      setLoading(false);
+    });
+  };
+
+  const handleJoin = () => {
+    if (!name.trim()) {
+      setError('Entre ton nom !');
+      return;
+    }
+    if (!joinCode.trim()) {
+      setError('Entre le code de la room !');
+      return;
+    }
+    setLoading(true);
+    setPlayerName(name.trim());
+
+    socket.emit('room:join', { roomCode: joinCode.trim().toUpperCase(), playerName: name.trim() });
+
+    socket.once('room:joined', ({ roomState, playerId, sessionToken }) => {
+      setPlayer(playerId, sessionToken, roomState.code);
+      setRoom(roomState);
+      router.push(`/room/${roomState.code}`);
+    });
+
+    socket.once('room:error', ({ message }) => {
+      setError(message);
+      setLoading(false);
+    });
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-dvh flex flex-col items-center justify-center p-6">
+      {/* Logo */}
+      <div className="mb-12 text-center">
+        <h1 className="text-6xl font-black tracking-tight mb-2">
+          <span className="text-[var(--accent-red)]">Pili</span>
+          <span className="text-[var(--accent-orange)]">Pili</span>
+        </h1>
+        <p className="text-[var(--text-secondary)] text-lg">
+          Le jeu de plis qui pique !
+        </p>
+        <div className="mt-4 text-4xl select-none">&#x1F336;&#xFE0F;</div>
+      </div>
+
+      {/* Main Card */}
+      <div className="w-full max-w-md bg-[var(--surface)] rounded-2xl border border-[var(--border)] p-8 shadow-2xl">
+        {error && (
+          <div className="mb-4 p-3 rounded-lg bg-[var(--accent-red)]/20 border border-[var(--accent-red)]/40 text-[var(--accent-red)] text-sm text-center">
+            {error}
+          </div>
+        )}
+
+        {/* Name input */}
+        <div className="mb-6">
+          <label className="block text-sm text-[var(--text-secondary)] mb-2">
+            Ton pseudo
+          </label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              setError('');
+            }}
+            placeholder="Cayenne"
+            maxLength={20}
+            className="w-full px-4 py-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-gold)] transition-colors"
+          />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+
+        {mode === 'menu' && (
+          <div className="space-y-3">
+            <button
+              onClick={() => setMode('create')}
+              className="btn-primary w-full text-lg"
+            >
+              Cr&eacute;er une partie
+            </button>
+            <button
+              onClick={() => setMode('join')}
+              className="btn-secondary w-full text-lg"
+            >
+              Rejoindre une partie
+            </button>
+          </div>
+        )}
+
+        {mode === 'create' && (
+          <div className="space-y-4">
+            <button
+              onClick={handleCreate}
+              disabled={loading}
+              className="btn-primary w-full text-lg"
+            >
+              {loading ? 'Cr\u00e9ation...' : 'Lancer la room'}
+            </button>
+            <button
+              onClick={() => { setMode('menu'); setError(''); }}
+              className="btn-secondary w-full"
+            >
+              Retour
+            </button>
+          </div>
+        )}
+
+        {mode === 'join' && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm text-[var(--text-secondary)] mb-2">
+                Code de la room
+              </label>
+              <input
+                type="text"
+                value={joinCode}
+                onChange={(e) => {
+                  setJoinCode(e.target.value.toUpperCase());
+                  setError('');
+                }}
+                placeholder="ABCDE"
+                maxLength={5}
+                className="w-full px-4 py-3 rounded-xl bg-[var(--bg-primary)] border border-[var(--border)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-gold)] transition-colors text-center text-2xl tracking-[0.3em] font-mono uppercase"
+              />
+            </div>
+            <button
+              onClick={handleJoin}
+              disabled={loading}
+              className="btn-primary w-full text-lg"
+            >
+              {loading ? 'Connexion...' : 'Rejoindre'}
+            </button>
+            <button
+              onClick={() => { setMode('menu'); setError(''); }}
+              className="btn-secondary w-full"
+            >
+              Retour
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Footer */}
+      <p className="mt-8 text-[var(--text-muted)] text-sm">
+        2-8 joueurs &middot; Plis, paris et missions
+      </p>
     </div>
   );
 }
