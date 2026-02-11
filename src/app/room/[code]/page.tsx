@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useSocket } from '@/hooks/useSocket';
 import { usePlayerStore } from '@/stores/playerStore';
@@ -69,6 +69,25 @@ export default function RoomPage() {
     router.push('/');
   };
 
+  const [copied, setCopied] = useState(false);
+  const handleCopyCode = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const input = document.createElement('input');
+      input.value = code;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
     <div className="min-h-dvh flex flex-col items-center justify-center p-6">
       {/* Header */}
@@ -79,9 +98,20 @@ export default function RoomPage() {
         </h1>
         <div className="flex items-center gap-3 justify-center">
           <span className="text-text-secondary text-sm">Code de la room :</span>
-          <span className="font-mono text-2xl tracking-[0.3em] text-accent-gold font-bold bg-surface px-4 py-1 rounded-lg border border-border">
+          <button
+            onClick={handleCopyCode}
+            className="group relative font-mono text-2xl tracking-[0.3em] text-accent-gold font-bold bg-surface px-4 py-1 rounded-lg border border-border hover:border-accent-gold/60 transition-all cursor-pointer"
+            title="Copier le code"
+          >
             {code}
-          </span>
+            <span className={`absolute -right-2 -top-2 text-xs px-1.5 py-0.5 rounded-md transition-all ${
+              copied
+                ? 'bg-accent-green text-background opacity-100 scale-100'
+                : 'bg-surface-hover text-text-muted opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100'
+            }`}>
+              {copied ? 'Copi\u00e9 !' : 'Copier'}
+            </span>
+          </button>
         </div>
       </div>
 

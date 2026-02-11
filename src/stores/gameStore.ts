@@ -109,6 +109,10 @@ export const useGameStore = create<GameStoreState>((set) => ({
         : { plays: [play], winnerId: null, trickNumber: 1 };
       return {
         currentTrick: trick,
+        // Remove the played card from my hand if it's me
+        myHand: playerId === state.myPlayerId
+          ? state.myHand.filter((c) => c.id !== play.card.id)
+          : state.myHand,
         players: state.players.map((p) =>
           p.id === playerId ? { ...p, cardCount: p.cardCount - 1 } : p
         ),

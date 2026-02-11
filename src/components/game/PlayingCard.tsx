@@ -26,8 +26,8 @@ export function PlayingCard({
   const isJoker = card.isJoker;
 
   const sizeClasses = small
-    ? 'w-12 h-18 text-sm'
-    : 'w-16 h-24 sm:w-20 sm:h-30 text-lg sm:text-xl';
+    ? 'w-10 h-15 text-xs'
+    : 'w-14 h-21 sm:w-16 sm:h-24 text-base sm:text-lg';
 
   const getCardColor = (value: number) => {
     if (isJoker) return 'text-accent-gold';

@@ -28,11 +28,11 @@ export function PlayerHand({
     return a.value - b.value;
   });
 
-  const fanSpread = Math.min(cards.length * 3, 20);
-  const cardOffset = Math.min(60, 300 / Math.max(cards.length, 1));
+  const fanSpread = Math.min(cards.length * 2.5, 18);
+  const cardOffset = Math.min(48, 280 / Math.max(cards.length, 1));
 
   return (
-    <div className="relative flex items-end justify-center" style={{ minHeight: '140px' }}>
+    <div className="relative flex items-end justify-center" style={{ height: '100px' }}>
       <AnimatePresence mode="popLayout">
         {sorted.map((card, index) => {
           const isAllowed = !allowedCardIds || allowedCardIds.includes(card.id);
@@ -43,13 +43,13 @@ export function PlayerHand({
             <motion.div
               key={card.id}
               layout
-              initial={{ opacity: 0, y: 50, scale: 0.8 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -50, scale: 0.8 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25, delay: index * 0.05 }}
+              initial={{ opacity: 0, y: 80, scale: 0.3, rotate: -20 }}
+              animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
+              exit={{ opacity: 0, y: -30, scale: 0.5 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 22, delay: index * 0.08 }}
               style={{
                 position: 'absolute',
-                left: `calc(50% + ${centerOffset * cardOffset}px - 40px)`,
+                left: `calc(50% + ${centerOffset * cardOffset}px - 28px)`,
                 transformOrigin: 'bottom center',
                 zIndex: index,
               }}

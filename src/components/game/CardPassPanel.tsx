@@ -32,17 +32,17 @@ export function CardPassPanel({ hand, count, direction, onPass }: CardPassPanelP
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-surface rounded-xl border border-accent-orange p-4"
+      className="bg-surface rounded-xl border border-accent-orange p-3 max-w-sm mx-auto w-full"
     >
-      <h3 className="text-sm font-bold text-accent-orange mb-2 text-center">
+      <h3 className="text-xs font-bold text-accent-orange mb-2 text-center">
         {passAll
           ? `Donne toutes tes cartes ${direction === 'left' ? '\u00e0 gauche' : '\u00e0 droite'}`
           : `Choisis ${count} carte${count > 1 ? 's' : ''} \u00e0 passer ${direction === 'left' ? '\u00e0 gauche' : '\u00e0 droite'}`}
       </h3>
 
-      <div className="flex flex-wrap justify-center gap-2 mb-4">
+      <div className="flex flex-wrap justify-center gap-1.5 mb-3">
         {hand.map((card) => (
           <PlayingCard
             key={card.id}
@@ -64,7 +64,7 @@ export function CardPassPanel({ hand, count, direction, onPass }: CardPassPanelP
           }
         }}
         disabled={!passAll && selectedIds.size !== actualCount}
-        className="btn-primary w-full"
+        className="btn-primary w-full text-sm py-2"
       >
         {passAll ? 'Passer toutes les cartes' : `Passer ${selectedIds.size}/${actualCount} carte(s)`}
       </button>
