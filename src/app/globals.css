@@ -32,14 +32,16 @@
   --color-text-secondary: var(--text-secondary);
   --color-text-muted: var(--text-muted);
   --color-pili: var(--pili-token);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-fredoka);
   --font-mono: var(--font-geist-mono);
+  --font-fredoka: var(--font-fredoka);
+  --font-nunito: var(--font-nunito);
 }
 
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-fredoka), 'Fredoka', system-ui, sans-serif;
   min-height: 100dvh;
 }
 

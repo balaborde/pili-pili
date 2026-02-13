@@ -18,6 +18,9 @@ import { GameOverOverlay } from './GameOverOverlay';
 import { JokerDeclarePanel } from './JokerDeclarePanel';
 import { CardPassPanel } from './CardPassPanel';
 import { MissionRevealOverlay } from './MissionRevealOverlay';
+import { DesignatePlayerPanel } from './DesignatePlayerPanel';
+import { CardExchangePanel } from './CardExchangePanel';
+import { MissionIcon } from './MissionIcon';
 
 export function GameBoard() {
   const socket = useSocket();
@@ -39,21 +42,40 @@ export function GameBoard() {
   const error = useGameStore((s) => s.error);
   const selectedCardId = useGameStore((s) => s.selectedCardId);
   const setSelectedCard = useGameStore((s) => s.setSelectedCard);
+  const designateRequired = useGameStore((s) => s.designateRequired);
+  const exchangeRequired = useGameStore((s) => s.exchangeRequired);
+  const exchangeAsTarget = useGameStore((s) => s.exchangeAsTarget);
 
   const [showJokerPanel, setShowJokerPanel] = useState(false);
   const [pendingJokerCardId, setPendingJokerCardId] = useState<string | null>(null);
   const [showMissionReveal, setShowMissionReveal] = useState(false);
   const [showMissionDetail, setShowMissionDetail] = useState(false);
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+  const [cardsRevealed, setCardsRevealed] = useState(false);
   const prevMissionIdRef = useRef<string | null>(null);
 
   // Trigger mission reveal animation when a new mission appears
   useEffect(() => {
     if (currentMission && currentMission.id !== prevMissionIdRef.current) {
       setShowMissionReveal(true);
+      setCardsRevealed(false); // hide cards until reveal is dismissed
       prevMissionIdRef.current = currentMission.id;
     }
   }, [currentMission]);
+
+  // When mission reveal ends, reveal cards with animation
+  const handleMissionRevealComplete = useCallback(() => {
+    setShowMissionReveal(false);
+    // Small delay then reveal cards
+    setTimeout(() => setCardsRevealed(true), 150);
+  }, []);
+
+  // Also reveal cards if there's no mission overlay (e.g. reconnect)
+  useEffect(() => {
+    if (!showMissionReveal && myHand.length > 0 && !cardsRevealed) {
+      setCardsRevealed(true);
+    }
+  }, [showMissionReveal, myHand.length, cardsRevealed]);
 
   const myIndex = players.findIndex((p) => p.id === playerId);
   const isMyTurn = players[currentPlayerIndex]?.id === playerId;
@@ -66,6 +88,14 @@ export function GameBoard() {
   // Check if card pass is required
   const needsPass = isPostBet && currentMission?.params &&
     (('passCount' in currentMission.params) || ('direction' in currentMission.params && !('passCount' in currentMission.params)));
+
+  // Check if this is a designate mission in post-bet phase
+  const needsDesignate = designateRequired && isPostBet;
+
+  // Check if card exchange is needed (trick won by me, or I'm the target)
+  const needsExchangeAsWinner = exchangeRequired && exchangeRequired.winnerId === playerId;
+  const needsExchangeAsTarget = exchangeAsTarget !== null;
+  const needsExchange = needsExchangeAsWinner || needsExchangeAsTarget;
 
   // Compute forbidden bets
   const forbiddenBets: number[] = [];
@@ -118,6 +148,14 @@ export function GameBoard() {
     socket.emit('game:passCards', { cardIds });
   }, [socket]);
 
+  const handleDesignate = useCallback((targetPlayerId: string) => {
+    socket.emit('game:designatePlayer', { targetPlayerId });
+  }, [socket]);
+
+  const handleExchange = useCallback((cardId: string, targetPlayerId?: string) => {
+    socket.emit('game:exchangeCard', { cardId, targetPlayerId });
+  }, [socket]);
+
   const handleQuit = useCallback(() => {
     socket.emit('room:leave');
     window.location.href = '/';
@@ -135,6 +173,25 @@ export function GameBoard() {
       case GamePhase.DEALING: return 'Distribution';
       default: return '';
     }
+  };
+
+  // Compute semicircle positions for opponents
+  const getOpponentPosition = (index: number, total: number) => {
+    // Spread opponents in an arc (from -70deg to +70deg, with 0deg = top)
+    const maxAngle = Math.min(70, 30 + total * 12); // Tighter arc for fewer players
+    const startAngle = -maxAngle;
+    const endAngle = maxAngle;
+    const angleDeg = total === 1 ? 0 : startAngle + index * ((endAngle - startAngle) / (total - 1));
+    const angleRad = (angleDeg * Math.PI) / 180;
+
+    // Reduced elliptical radius to stay within bounds
+    const radiusX = 34; // percentage of container width
+    const radiusY = 28; // percentage of container height
+
+    const x = Math.max(10, Math.min(90, 50 + radiusX * Math.sin(angleRad)));
+    const y = 6 + radiusY * (1 - Math.cos(angleRad));
+
+    return { x, y };
   };
 
   return (
@@ -206,22 +263,38 @@ export function GameBoard() {
       </AnimatePresence>
 
       {/* Main Game Area - fills remaining space */}
-      <div className="flex-1 min-h-0 flex flex-col px-3 py-2">
-        {/* Opponent Seats */}
-        <div className="flex flex-wrap justify-center gap-1 shrink-0">
-          {otherPlayers.map((player) => (
-            <PlayerSeat
-              key={player.id}
-              player={player}
-              isCurrentTurn={players[currentPlayerIndex]?.id === player.id}
-              isDealer={players[dealerIndex]?.id === player.id}
-              isMe={false}
-            />
-          ))}
+      <div className="flex-1 min-h-0 relative">
+        {/* Opponent Seats in semicircle */}
+        <div className="absolute inset-0 pointer-events-none">
+          {otherPlayers.map((player, index) => {
+            const pos = getOpponentPosition(index, otherPlayers.length);
+            return (
+              <motion.div
+                key={player.id}
+                className="absolute pointer-events-auto"
+                style={{
+                  left: `${pos.x}%`,
+                  top: `${pos.y}%`,
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 10,
+                }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.1, type: 'spring', stiffness: 300, damping: 25 }}
+              >
+                <PlayerSeat
+                  player={player}
+                  isCurrentTurn={players[currentPlayerIndex]?.id === player.id}
+                  isDealer={players[dealerIndex]?.id === player.id}
+                  isMe={false}
+                />
+              </motion.div>
+            );
+          })}
         </div>
 
-        {/* Trick Area - takes remaining vertical space */}
-        <div className="flex-1 min-h-0 flex items-center justify-center">
+        {/* Trick Area - centered */}
+        <div className="absolute inset-0 flex items-center justify-center">
           <TrickArea
             trick={currentTrick}
             players={players}
@@ -229,8 +302,9 @@ export function GameBoard() {
           />
         </div>
 
-        {/* My Seat + Action Zone */}
-        <div className="shrink-0 flex flex-col items-center gap-1">
+        {/* Action Zone - centered below trick area */}
+        <div className="absolute bottom-0 left-0 right-0 flex flex-col items-center gap-1 px-3 pb-2">
+          {/* My Seat */}
           {myIndex >= 0 && (
             <PlayerSeat
               player={players[myIndex]}
@@ -272,35 +346,86 @@ export function GameBoard() {
               >
                 <CardPassPanel
                   hand={myHand}
-                  count={(currentMission.params as any).passCount ?? myHand.length}
-                  direction={(currentMission.params as any).direction ?? 'left'}
+                  count={(currentMission.params as Record<string, unknown>).passCount as number ?? myHand.length}
+                  direction={((currentMission.params as Record<string, unknown>).direction as 'left' | 'right') ?? 'left'}
                   onPass={handlePassCards}
                 />
               </motion.div>
             )}
           </AnimatePresence>
-        </div>
 
-        {/* My Hand */}
-        <div className="shrink-0 w-full max-w-xl mx-auto">
-          <PlayerHand
-            cards={myHand}
-            onCardClick={handleCardClick}
-            disabled={!isTrickPhase || !isMyTurn}
-            hidden={isPeeking === false && myHand.some((c) => c.value === -1)}
-          />
+          {/* Designate Player Panel */}
           <AnimatePresence>
-            {isTrickPhase && isMyTurn && selectedCardId && (
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="text-center text-[10px] text-accent-gold mt-1 animate-pulse"
+            {needsDesignate && (
+              <motion.div
+                key="designate"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="w-full max-w-sm overflow-hidden"
               >
-                Clique \u00e0 nouveau pour confirmer
-              </motion.p>
+                <DesignatePlayerPanel
+                  players={players}
+                  myPlayerId={playerId}
+                  onDesignate={handleDesignate}
+                />
+              </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Card Exchange Panel */}
+          <AnimatePresence>
+            {needsExchange && (
+              <motion.div
+                key="exchange"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="w-full max-w-sm overflow-hidden"
+              >
+                <CardExchangePanel
+                  hand={myHand}
+                  players={players}
+                  myPlayerId={playerId}
+                  mode={needsExchangeAsWinner ? 'winner' : 'target'}
+                  onExchange={handleExchange}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* My Hand - only shown after mission reveal dismissed */}
+          <div className="w-full max-w-xl mx-auto">
+            <AnimatePresence>
+              {cardsRevealed && myHand.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 30 }}
+                  transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+                >
+                  <PlayerHand
+                    cards={myHand}
+                    onCardClick={handleCardClick}
+                    disabled={!isTrickPhase || !isMyTurn}
+                    hidden={isPeeking === false && myHand.some((c) => c.value === -1)}
+                  />
+                  <AnimatePresence>
+                    {isTrickPhase && isMyTurn && selectedCardId && (
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="text-center text-[10px] text-accent-gold mt-1 animate-pulse"
+                      >
+                        Clique \u00e0 nouveau pour confirmer
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
@@ -311,7 +436,7 @@ export function GameBoard() {
         {showMissionReveal && currentMission && (
           <MissionRevealOverlay
             mission={currentMission}
-            onComplete={() => setShowMissionReveal(false)}
+            onComplete={handleMissionRevealComplete}
           />
         )}
       </AnimatePresence>
@@ -340,13 +465,13 @@ export function GameBoard() {
               `}
             >
               <div className={`
-                w-10 h-10 rounded-full flex items-center justify-center text-lg font-black mx-auto mb-3
+                w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3
                 ${currentMission.isExpert
                   ? 'bg-accent-red/30 text-accent-red border-2 border-accent-red/50'
                   : 'bg-accent-gold/30 text-accent-gold border-2 border-accent-gold/50'
                 }
               `}>
-                {currentMission.id}
+                <MissionIcon missionId={currentMission.id} size={24} />
               </div>
               <h2 className="text-xl font-black text-center text-foreground mb-2">
                 {currentMission.name}

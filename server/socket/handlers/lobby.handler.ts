@@ -301,17 +301,18 @@ function setupGameEventListener(io: AppServer, engine: GameEngine): void {
         io.to(roomCode).emit('game:exchangeRequired', { withPlayerId: event.winnerId });
         break;
 
+      case 'exchangeTargeted': {
+        const targetSockets = getSocketsForPlayer(io, roomCode, event.targetPlayerId);
+        for (const s of targetSockets) {
+          s.emit('game:exchangeTargeted', { winnerId: event.winnerId });
+        }
+        break;
+      }
+
       case 'opponentHandsRevealed':
         io.to(roomCode).emit('game:opponentHandsRevealed', { hands: event.hands });
         break;
 
-      case 'indianPokerReveal': {
-        const sockets = getSocketsForPlayer(io, roomCode, event.targetPlayerId);
-        for (const s of sockets) {
-          s.emit('game:indianPokerReveal', { otherPlayersCards: event.otherPlayersCards });
-        }
-        break;
-      }
     }
   });
 }

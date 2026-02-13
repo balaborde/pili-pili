@@ -35,8 +35,11 @@ interface GameStoreState {
   peekDurationMs: number;
   error: string | null;
 
-  // Other players' visible hands (for face-up / indian poker missions)
+  // Mission-specific state
   visibleOpponentHands: Map<string, Card[]>;
+  designateRequired: boolean;
+  exchangeRequired: { winnerId: string } | null;
+  exchangeAsTarget: { winnerId: string } | null;
 
   // Actions
   syncState: (state: ClientGameState) => void;
@@ -54,6 +57,9 @@ interface GameStoreState {
   setPeeking: (isPeeking: boolean, durationMs?: number) => void;
   setError: (error: string | null) => void;
   setVisibleOpponentHands: (hands: { playerId: string; cards: Card[] }[]) => void;
+  setDesignateRequired: (required: boolean) => void;
+  setExchangeRequired: (data: { winnerId: string } | null) => void;
+  setExchangeAsTarget: (data: { winnerId: string } | null) => void;
   updatePlayerConnection: (playerId: string, connected: boolean) => void;
   reset: () => void;
 }
@@ -79,6 +85,9 @@ export const useGameStore = create<GameStoreState>((set) => ({
   peekDurationMs: 0,
   error: null,
   visibleOpponentHands: new Map(),
+  designateRequired: false,
+  exchangeRequired: null,
+  exchangeAsTarget: null,
 
   syncState: (state) =>
     set({
@@ -94,9 +103,25 @@ export const useGameStore = create<GameStoreState>((set) => ({
       dealerIndex: state.dealerIndex,
       totalTricksThisRound: state.totalTricksThisRound,
       missionState: state.missionState,
+      designateRequired: false,
+      exchangeRequired: null,
+      exchangeAsTarget: null,
     }),
 
-  setPhase: (phase) => set({ phase }),
+  setPhase: (phase) =>
+    set((state) => ({
+      phase,
+      designateRequired: false,
+      exchangeRequired: null,
+      exchangeAsTarget: null,
+      // Reset per-round state when a new round begins
+      ...(phase === ('ROUND_START' as GamePhase) && {
+        players: state.players.map((p) => ({ ...p, tricksWon: 0, bet: null })),
+        previousTricks: [],
+        currentTrick: null,
+        roundScoring: null,
+      }),
+    })),
 
   setMission: (mission) => set({ currentMission: mission }),
 
@@ -109,7 +134,6 @@ export const useGameStore = create<GameStoreState>((set) => ({
         : { plays: [play], winnerId: null, trickNumber: 1 };
       return {
         currentTrick: trick,
-        // Remove the played card from my hand if it's me
         myHand: playerId === state.myPlayerId
           ? state.myHand.filter((c) => c.id !== play.card.id)
           : state.myHand,
@@ -133,6 +157,8 @@ export const useGameStore = create<GameStoreState>((set) => ({
       players: state.players.map((p) =>
         p.id === winnerId ? { ...p, tricksWon: p.tricksWon + 1 } : p
       ),
+      exchangeRequired: null,
+      exchangeAsTarget: null,
     })),
 
   setTurnChanged: (currentPlayerIndex) => set({ currentPlayerIndex }),
@@ -158,9 +184,22 @@ export const useGameStore = create<GameStoreState>((set) => ({
   setError: (error) => set({ error }),
 
   setVisibleOpponentHands: (hands) =>
-    set({
-      visibleOpponentHands: new Map(hands.map((h) => [h.playerId, h.cards])),
+    set((state) => {
+      const handsMap = new Map(hands.map((h) => [h.playerId, h.cards]));
+      return {
+        visibleOpponentHands: handsMap,
+        players: state.players.map((p) => {
+          const visible = handsMap.get(p.id);
+          return visible ? { ...p, visibleHand: visible } : p;
+        }),
+      };
     }),
+
+  setDesignateRequired: (required) => set({ designateRequired: required }),
+
+  setExchangeRequired: (data) => set({ exchangeRequired: data }),
+
+  setExchangeAsTarget: (data) => set({ exchangeAsTarget: data }),
 
   updatePlayerConnection: (playerId, connected) =>
     set((state) => ({
@@ -191,5 +230,8 @@ export const useGameStore = create<GameStoreState>((set) => ({
       peekDurationMs: 0,
       error: null,
       visibleOpponentHands: new Map(),
+      designateRequired: false,
+      exchangeRequired: null,
+      exchangeAsTarget: null,
     }),
 }));

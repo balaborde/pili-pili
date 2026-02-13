@@ -41,8 +41,8 @@ export type GameEvent =
   | { type: 'handUpdate'; playerId: string; hand: Card[] }
   | { type: 'designateRequired' }
   | { type: 'exchangeRequired'; winnerId: string }
+  | { type: 'exchangeTargeted'; targetPlayerId: string; winnerId: string }
   | { type: 'opponentHandsRevealed'; hands: { playerId: string; cards: Card[] }[] }
-  | { type: 'indianPokerReveal'; targetPlayerId: string; otherPlayersCards: { playerId: string; cards: Card[] }[] }
   | { type: 'stateModification'; modifications: StateModification[] };
 
 export class GameEngine {
@@ -71,7 +71,9 @@ export class GameEngine {
 
   // Pending actions trackers
   private pendingPasses: Map<string, Card[]> = new Map();
-  private pendingExchanges: Map<string, { cardId: string; targetPlayerId: string }> = new Map();
+  private pendingExchanges: Map<string, { cardId: string; targetPlayerId?: string }> = new Map();
+  private exchangeWinnerId: string | null = null;
+  private exchangeTargetId: string | null = null;
   private pendingDesignations: Map<string, string> = new Map();
   private peekAcknowledged: Set<string> = new Set();
 
@@ -223,6 +225,8 @@ export class GameEngine {
     this.roundMissionPilis.clear();
     this.pendingPasses.clear();
     this.pendingExchanges.clear();
+    this.exchangeWinnerId = null;
+    this.exchangeTargetId = null;
     this.pendingDesignations.clear();
     this.peekAcknowledged.clear();
     this.missionState = {};
@@ -293,24 +297,6 @@ export class GameEngine {
         this.emit({ type: 'peekEnd' });
         this.startBetting();
       }, mission.getPeekDurationMs() + 500); // +500ms buffer
-      return;
-    }
-
-    // Handle Indian poker
-    if (mission.type === 'indianPoker') {
-      // Send each player the OTHER players' cards
-      for (const player of this.players) {
-        const othersCards = this.players
-          .filter((p) => p.id !== player.id)
-          .map((p) => ({ playerId: p.id, cards: p.hand }));
-        this.emit({
-          type: 'indianPokerReveal',
-          targetPlayerId: player.id,
-          otherPlayersCards: othersCards,
-        });
-      }
-      // Move to betting (players bet without seeing their own cards)
-      this.startBetting();
       return;
     }
 
@@ -542,16 +528,15 @@ export class GameEngine {
     this.emit({ type: 'turnChanged', currentPlayerIndex: this.currentPlayerIndex });
 
     if (this.currentMission!.isSimultaneous()) {
-      // All players play simultaneously — bots play immediately
+      // All players play simultaneously — bots (and disconnected players) play immediately
       for (const player of this.players) {
-        if (player.isBot) {
-          const bot = this.bots.get(player.id);
-          if (bot) {
-            setTimeout(() => {
-              const card = bot.decideCardToPlay(player.hand, this.currentTrick, this.currentMission!);
-              this.playCard(player.id, card.id);
-            }, bot.getThinkDelay());
-          }
+        const bot = this.bots.get(player.id);
+        if (bot) {
+          setTimeout(() => {
+            const card = bot.decideCardToPlay(player.hand, this.currentTrick, this.currentMission!);
+            const jokerValue = card.isJoker ? bot.decideJokerValue(this.currentMission!) : undefined;
+            this.playCard(player.id, card.id, jokerValue);
+          }, bot.getThinkDelay());
         }
       }
     } else {
@@ -599,8 +584,8 @@ export class GameEngine {
     // Handle joker
     let effectiveValue: number;
     if (card.isJoker) {
-      if (jokerDeclaredValue === undefined || jokerDeclaredValue < 0 || jokerDeclaredValue > 56) {
-        return { ok: false, error: 'Valeur du joker invalide (0-56)' };
+      if (jokerDeclaredValue !== 0 && jokerDeclaredValue !== 56) {
+        return { ok: false, error: 'Le joker ne peut valoir que 0 ou 56' };
       }
       effectiveValue = mission.modifyEffectiveValue(jokerDeclaredValue, true);
     } else {
@@ -622,7 +607,8 @@ export class GameEngine {
 
     // Check if all players have played
     if (this.currentTrick.plays.length === this.players.length) {
-      this.resolveTrick();
+      // Delay resolution to let the last card animation finish (800ms)
+      setTimeout(() => this.resolveTrick(), 800);
     } else if (!isSimultaneous) {
       // Move to next player
       this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
@@ -662,15 +648,19 @@ export class GameEngine {
 
     // Handle card exchange mission
     if (this.currentMission!.requiresExchangeOnWin() && winner.hand.length > 0) {
+      this.exchangeWinnerId = winner.id;
+      this.exchangeTargetId = null;
+      this.pendingExchanges.clear();
       this.emit({ type: 'exchangeRequired', winnerId: winner.id });
-      // Wait for exchange actions
+
+      // Bot winner: auto-pick card and target
       if (winner.isBot) {
         const bot = this.bots.get(winner.id);
         if (bot) {
           setTimeout(() => {
             const target = this.players.find((p) => p.id !== winner.id && p.hand.length > 0);
             if (target) {
-              const cardToGive = winner.hand[winner.hand.length - 1]; // Bot gives worst card
+              const cardToGive = winner.hand[winner.hand.length - 1];
               this.submitExchange(winner.id, cardToGive.id, target.id);
             } else {
               this.afterTrickResolution();
@@ -687,37 +677,78 @@ export class GameEngine {
   submitExchange(
     playerId: string,
     cardId: string,
-    targetPlayerId: string
+    targetPlayerId?: string
   ): { ok: boolean; error?: string } {
     const player = this.getPlayer(playerId);
-    const target = this.getPlayer(targetPlayerId);
-    if (!player || !target) return { ok: false, error: 'Joueur introuvable' };
+    if (!player) return { ok: false, error: 'Joueur introuvable' };
 
     const card = player.hand.find((c) => c.id === cardId);
     if (!card) return { ok: false, error: 'Carte introuvable' };
 
-    this.pendingExchanges.set(playerId, { cardId, targetPlayerId });
+    // Step 1: Winner submits their card + target player
+    if (playerId === this.exchangeWinnerId && !this.exchangeTargetId) {
+      if (!targetPlayerId) return { ok: false, error: 'Cible requise' };
+      const target = this.getPlayer(targetPlayerId);
+      if (!target) return { ok: false, error: 'Joueur cible introuvable' };
+      if (target.hand.length === 0) return { ok: false, error: 'Le joueur cible n\'a pas de cartes' };
 
-    // If both sides have submitted (or if only winner submits and target auto-gives)
-    // For simplicity: winner picks card to give and target, target gives their worst card
-    // In a full implementation, both would choose. For now, target auto-gives lowest.
-    const targetCard = target.hand.sort((a, b) => a.value - b.value)[0];
-    if (!targetCard) {
+      this.exchangeTargetId = targetPlayerId;
+      this.pendingExchanges.set(playerId, { cardId });
+
+      // Notify the target that they need to pick a card
+      this.emit({ type: 'exchangeTargeted', targetPlayerId, winnerId: playerId });
+
+      // Bot target: auto-pick lowest card
+      if (target.isBot) {
+        const bot = this.bots.get(target.id);
+        if (bot) {
+          setTimeout(() => {
+            const sorted = [...target.hand].sort((a, b) => a.value - b.value);
+            this.submitExchange(target.id, sorted[0].id);
+          }, bot.getThinkDelay());
+        }
+      }
+      return { ok: true };
+    }
+
+    // Step 2: Target submits their card
+    if (playerId === this.exchangeTargetId) {
+      this.pendingExchanges.set(playerId, { cardId });
+
+      // Both have submitted — execute the swap
+      const winnerExchange = this.pendingExchanges.get(this.exchangeWinnerId!);
+      if (!winnerExchange) return { ok: false, error: 'Échange invalide' };
+
+      const winner = this.getPlayer(this.exchangeWinnerId!);
+      const target = player;
+      if (!winner) return { ok: false, error: 'Joueur introuvable' };
+
+      const winnerCard = winner.hand.find((c) => c.id === winnerExchange.cardId);
+      const targetCard = target.hand.find((c) => c.id === cardId);
+
+      if (!winnerCard || !targetCard) {
+        this.afterTrickResolution();
+        return { ok: true };
+      }
+
+      // Execute swap
+      winner.hand = winner.hand.filter((c) => c.id !== winnerCard.id);
+      target.hand = target.hand.filter((c) => c.id !== targetCard.id);
+      winner.hand.push(targetCard);
+      target.hand.push(winnerCard);
+
+      this.emit({ type: 'handUpdate', playerId: winner.id, hand: winner.hand });
+      this.emit({ type: 'handUpdate', playerId: target.id, hand: target.hand });
+
+      this.exchangeWinnerId = null;
+      this.exchangeTargetId = null;
+      this.pendingExchanges.clear();
+
       this.afterTrickResolution();
       return { ok: true };
     }
 
-    // Execute swap
-    player.hand = player.hand.filter((c) => c.id !== card.id);
-    target.hand = target.hand.filter((c) => c.id !== targetCard.id);
-    player.hand.push(targetCard);
-    target.hand.push(card);
-
-    this.emit({ type: 'handUpdate', playerId: player.id, hand: player.hand });
-    this.emit({ type: 'handUpdate', playerId: target.id, hand: target.hand });
-
-    this.afterTrickResolution();
-    return { ok: true };
+    return { ok: false, error: 'Vous ne participez pas à cet échange' };
   }
 
   private afterTrickResolution(): void {
@@ -741,14 +772,13 @@ export class GameEngine {
 
       if (this.currentMission!.isSimultaneous()) {
         for (const player of this.players) {
-          if (player.isBot) {
-            const bot = this.bots.get(player.id);
-            if (bot) {
-              setTimeout(() => {
-                const card = bot.decideCardToPlay(player.hand, this.currentTrick, this.currentMission!);
-                this.playCard(player.id, card.id);
-              }, bot.getThinkDelay());
-            }
+          const bot = this.bots.get(player.id);
+          if (bot) {
+            setTimeout(() => {
+              const card = bot.decideCardToPlay(player.hand, this.currentTrick, this.currentMission!);
+              const jokerValue = card.isJoker ? bot.decideJokerValue(this.currentMission!) : undefined;
+              this.playCard(player.id, card.id, jokerValue);
+            }, bot.getThinkDelay());
           }
         }
       } else {
@@ -818,9 +848,11 @@ export class GameEngine {
 
   private triggerBotActionIfNeeded(): void {
     const currentPlayer = this.players[this.currentPlayerIndex];
-    if (!currentPlayer?.isBot) return;
+    if (!currentPlayer) return;
 
+    // Check if player is a bot OR a disconnected human with a temp bot
     const bot = this.bots.get(currentPlayer.id);
+    if (!currentPlayer.isBot && !bot) return;
     if (!bot) return;
 
     const phase = this.stateMachine.phase;
@@ -846,29 +878,26 @@ export class GameEngine {
 
   private triggerBotPassIfNeeded(count: number): void {
     for (const player of this.players) {
-      if (player.isBot) {
-        const bot = this.bots.get(player.id);
-        if (bot) {
-          setTimeout(() => {
-            const cardsToPass = bot.decideCardsToPass(player.hand, count);
-            this.submitPassCards(player.id, cardsToPass.map((c) => c.id));
-          }, bot.getThinkDelay());
-        }
+      const bot = this.bots.get(player.id);
+      if (bot) {
+        setTimeout(() => {
+          const cardsToPass = bot.decideCardsToPass(player.hand, count);
+          this.submitPassCards(player.id, cardsToPass.map((c) => c.id));
+        }, bot.getThinkDelay());
       }
     }
   }
 
   private triggerBotDesignateIfNeeded(): void {
     for (const player of this.players) {
-      if (player.isBot) {
-        const bot = this.bots.get(player.id);
-        if (bot) {
-          setTimeout(() => {
-            const others = this.players.filter((p) => p.id !== player.id);
-            const target = others[Math.floor(Math.random() * others.length)];
-            this.submitDesignation(player.id, target.id);
-          }, bot.getThinkDelay());
-        }
+      const bot = this.bots.get(player.id);
+      if (bot) {
+        setTimeout(() => {
+          const targetId = bot.decideDesignation(this.players);
+          if (targetId) {
+            this.submitDesignation(player.id, targetId);
+          }
+        }, bot.getThinkDelay());
       }
     }
   }
@@ -916,15 +945,6 @@ export class GameEngine {
       myHand = myHand.map((c) => ({ ...c, value: -1 })); // Hidden marker
     }
 
-    // Indian poker: during betting, player can't see own cards
-    if (
-      mission?.type === 'indianPoker' &&
-      (this.stateMachine.phase === ('BETTING' as GamePhase) ||
-        this.stateMachine.phase === ('PRE_BET_MISSION' as GamePhase))
-    ) {
-      myHand = myHand.map((c) => ({ ...c, value: -1 }));
-    }
-
     return {
       phase: this.stateMachine.phase,
       roomCode: this.roomCode,
@@ -948,8 +968,106 @@ export class GameEngine {
 
   setPlayerConnected(playerId: string, connected: boolean): void {
     const player = this.getPlayer(playerId);
-    if (player) {
-      player.isConnected = connected;
+    if (!player) return;
+
+    player.isConnected = connected;
+
+    if (!connected && !player.isBot) {
+      // Player disconnected during game — assign a temp bot to take over
+      if (this.stateMachine.phase !== ('LOBBY' as GamePhase) &&
+          this.stateMachine.phase !== ('GAME_OVER' as GamePhase)) {
+        if (!this.bots.has(playerId)) {
+          this.bots.set(playerId, new BotPlayer(playerId, this.settings.botDifficulty));
+        }
+        // If it's their turn, trigger bot action
+        this.triggerBotForDisconnectedPlayer(playerId);
+      }
+    } else if (connected && !player.isBot) {
+      // Player reconnected — remove temp bot
+      this.bots.delete(playerId);
+    }
+  }
+
+  private triggerBotForDisconnectedPlayer(playerId: string): void {
+    const bot = this.bots.get(playerId);
+    if (!bot) return;
+
+    const phase = this.stateMachine.phase;
+    const player = this.getPlayer(playerId);
+    if (!player) return;
+
+    // Check if it's this player's turn to bet
+    if (phase === ('BETTING' as GamePhase)) {
+      const currentPlayer = this.players[this.currentPlayerIndex];
+      if (currentPlayer?.id === playerId) {
+        setTimeout(() => {
+          const context: BetContext = {
+            playerIndex: this.getBettingOrderIndex(playerId),
+            playerCount: this.players.length,
+            totalCards: this.totalTricksThisRound,
+            previousBets: this.players.map((p) => p.bet),
+            hand: player.hand,
+          };
+          const bet = bot.decideBet(player.hand, this.currentMission!, context, this.betValidator);
+          this.placeBet(playerId, bet);
+        }, bot.getThinkDelay());
+      }
+    }
+
+    // Check if it's this player's turn to play a card
+    if (phase === ('TRICK_PLAY' as GamePhase)) {
+      const currentPlayer = this.players[this.currentPlayerIndex];
+      if (currentPlayer?.id === playerId) {
+        setTimeout(() => {
+          const card = bot.decideCardToPlay(player.hand, this.currentTrick, this.currentMission!);
+          const jokerValue = card.isJoker ? bot.decideJokerValue(this.currentMission!) : undefined;
+          this.playCard(playerId, card.id, jokerValue);
+        }, bot.getThinkDelay());
+      }
+    }
+
+    // Check if this player needs to pass cards
+    if (phase === ('POST_BET_MISSION' as GamePhase) && !this.pendingPasses.has(playerId)) {
+      const mission = this.currentMission;
+      if (mission && (mission.getPassCount() > 0 || mission.isPassAll())) {
+        const count = mission.isPassAll() ? player.hand.length : mission.getPassCount();
+        setTimeout(() => {
+          const cardsToPass = bot.decideCardsToPass(player.hand, count);
+          this.submitPassCards(playerId, cardsToPass.map((c) => c.id));
+        }, bot.getThinkDelay());
+      }
+    }
+
+    // Check if this player needs to designate
+    if (phase === ('POST_BET_MISSION' as GamePhase) && !this.pendingDesignations.has(playerId)) {
+      const mission = this.currentMission;
+      if (mission && mission.requiresDesignation()) {
+        setTimeout(() => {
+          const targetId = bot.decideDesignation(this.players);
+          if (targetId) {
+            this.submitDesignation(playerId, targetId);
+          }
+        }, bot.getThinkDelay());
+      }
+    }
+
+    // Check if this player needs to exchange (as winner or target)
+    if (this.exchangeWinnerId === playerId && !this.pendingExchanges.has(playerId)) {
+      setTimeout(() => {
+        const target = this.players.find((p) => p.id !== playerId && p.hand.length > 0);
+        if (target) {
+          const cardToGive = player.hand[player.hand.length - 1];
+          this.submitExchange(playerId, cardToGive.id, target.id);
+        }
+      }, bot.getThinkDelay());
+    }
+    if (this.exchangeTargetId === playerId && !this.pendingExchanges.has(playerId)) {
+      setTimeout(() => {
+        const sorted = [...player.hand].sort((a, b) => a.value - b.value);
+        if (sorted.length > 0) {
+          this.submitExchange(playerId, sorted[0].id);
+        }
+      }, bot.getThinkDelay());
     }
   }
 

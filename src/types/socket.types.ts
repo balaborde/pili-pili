@@ -32,7 +32,7 @@ export interface ClientToServerEvents {
   'game:placeBet': (data: { bet: number }) => void;
   'game:playCard': (data: { cardId: string; jokerDeclaredValue?: number }) => void;
   'game:passCards': (data: { cardIds: string[] }) => void;
-  'game:exchangeCard': (data: { cardId: string; targetPlayerId: string }) => void;
+  'game:exchangeCard': (data: { cardId: string; targetPlayerId?: string }) => void;
   'game:designatePlayer': (data: { targetPlayerId: string }) => void;
   'game:acknowledgePeek': () => void;
   'game:ackRoundEnd': () => void;
@@ -68,6 +68,7 @@ export interface ServerToClientEvents {
   'game:cardsPassRequired': (data: { direction: 'left' | 'right'; count: number }) => void;
   'game:cardsReceived': (data: { cards: Card[] }) => void;
   'game:exchangeRequired': (data: { withPlayerId: string }) => void;
+  'game:exchangeTargeted': (data: { winnerId: string }) => void;
   'game:designateRequired': () => void;
   'game:peekStart': (data: { durationMs: number }) => void;
   'game:peekEnd': () => void;
@@ -79,7 +80,6 @@ export interface ServerToClientEvents {
 
   // Visibility (mission-specific)
   'game:opponentHandsRevealed': (data: { hands: { playerId: string; cards: Card[] }[] }) => void;
-  'game:indianPokerReveal': (data: { otherPlayersCards: { playerId: string; cards: Card[] }[] }) => void;
 
   // Player status
   'player:disconnected': (data: { playerId: string }) => void;

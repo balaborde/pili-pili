@@ -41,6 +41,7 @@ export const GAME_EVENTS = {
   CARDS_PASS_REQUIRED: 'game:cardsPassRequired',
   CARDS_RECEIVED: 'game:cardsReceived',
   EXCHANGE_REQUIRED: 'game:exchangeRequired',
+  EXCHANGE_TARGETED: 'game:exchangeTargeted',
   DESIGNATE_REQUIRED: 'game:designateRequired',
   PEEK_START: 'game:peekStart',
   PEEK_END: 'game:peekEnd',
@@ -50,7 +51,6 @@ export const GAME_EVENTS = {
   OVER: 'game:over',
   STATE_SYNC: 'game:stateSync',
   OPPONENT_HANDS_REVEALED: 'game:opponentHandsRevealed',
-  INDIAN_POKER_REVEAL: 'game:indianPokerReveal',
 } as const;
 
 export const PLAYER_EVENTS = {

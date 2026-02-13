@@ -118,6 +118,20 @@ export function useGameSocket(): void {
       gameStore.getState().setVisibleOpponentHands(hands);
     });
 
+    // Designate player mission
+    socket.on('game:designateRequired', () => {
+      gameStore.getState().setDesignateRequired(true);
+    });
+
+    // Card exchange mission
+    socket.on('game:exchangeRequired', ({ withPlayerId }) => {
+      gameStore.getState().setExchangeRequired({ winnerId: withPlayerId });
+    });
+
+    socket.on('game:exchangeTargeted', ({ winnerId }) => {
+      gameStore.getState().setExchangeAsTarget({ winnerId });
+    });
+
     socket.on('game:betError', ({ message }) => {
       gameStore.getState().setError(message);
       setTimeout(() => gameStore.getState().setError(null), 5000);
@@ -162,6 +176,9 @@ export function useGameSocket(): void {
       socket.off('game:peekStart');
       socket.off('game:peekEnd');
       socket.off('game:opponentHandsRevealed');
+      socket.off('game:designateRequired');
+      socket.off('game:exchangeRequired');
+      socket.off('game:exchangeTargeted');
       socket.off('game:betError');
       socket.off('game:playError');
       socket.off('player:disconnected');

@@ -63,7 +63,7 @@ export interface ClientPlayer {
   tricksWon: number;
   pilis: number;
   seatIndex: number;
-  // Only populated if mission reveals hands (face-up, indian poker for others)
+  // Only populated if mission reveals hands (e.g. face-up)
   visibleHand?: Card[];
 }
 

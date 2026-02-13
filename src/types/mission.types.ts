@@ -62,7 +62,6 @@ export type MissionType =
   | 'passCards'
   | 'passAllCards'
   | 'forbiddenBet'
-  | 'indianPoker'
   | 'drawExtra'
   | 'faceUp'
   | 'peek'

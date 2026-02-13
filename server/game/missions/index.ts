@@ -3,7 +3,7 @@ import { StandardMission } from './StandardMission';
 import { PassCardsMission } from './PassCardsMission';
 import { PassAllCardsMission } from './PassAllCardsMission';
 import { ForbiddenBetMission } from './ForbiddenBetMission';
-import { IndianPokerMission } from './IndianPokerMission';
+
 import { DrawExtraMission } from './DrawExtraMission';
 import { FaceUpMission } from './FaceUpMission';
 import { PeekMission } from './PeekMission';
@@ -33,9 +33,7 @@ export function createMissionDeck(includeExpert: boolean): BaseMission[] {
     new PassAllCardsMission(2, 'right'),
     new ForbiddenBetMission(3, 0),
     new ForbiddenBetMission(4, 1),
-    new IndianPokerMission(2),
-    new IndianPokerMission(3),
-    new DrawExtraMission(2),
+new DrawExtraMission(2),
     new DrawExtraMission(3),
     new FaceUpMission(3),
     new FaceUpMission(4),
@@ -51,10 +49,6 @@ export function createMissionDeck(includeExpert: boolean): BaseMission[] {
     new PenaltyNumbersMission(4, [10, 20, 30]),
     new CardExchangeMission(3),
     new CardExchangeMission(4),
-    new StandardMission(2),
-    new StandardMission(3),
-    new StandardMission(4),
-    new StandardMission(5),
   ];
 
   if (includeExpert) {

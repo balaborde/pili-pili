@@ -1,4 +1,4 @@
-import type { Card, BotDifficulty, Trick } from '../../../src/types/game.types';
+import type { Card, BotDifficulty, Player, Trick } from '../../../src/types/game.types';
 import type { BetContext } from '../../../src/types/mission.types';
 import { BOT_THINK_DELAY_MIN, BOT_THINK_DELAY_MAX } from '../../../src/lib/constants';
 import type { BaseMission } from '../missions/BaseMission';
@@ -157,8 +157,35 @@ export class BotPlayer {
   }
 
   decideJokerValue(mission: BaseMission): number {
-    // Declare joker as 56 (highest possible) by default
-    return 56;
+    // Easy bots randomly pick 0 or 56
+    if (this.difficulty === 'easy') {
+      return Math.random() < 0.5 ? 0 : 56;
+    }
+    // Medium/hard bots usually play 56 (strongest), occasionally 0
+    return Math.random() < 0.15 ? 0 : 56;
+  }
+
+  decideDesignation(players: Player[]): string {
+    const others = players.filter((p) => p.id !== this.id);
+    if (others.length === 0) return '';
+
+    switch (this.difficulty) {
+      case 'easy':
+        // Pure random
+        return others[Math.floor(Math.random() * others.length)].id;
+
+      case 'medium':
+        // Prefer designating the player with the most pilis (weakest player)
+        return [...others].sort((a, b) => b.pilis - a.pilis)[0].id;
+
+      case 'hard':
+        // Designate the player with fewest pilis (most likely to get 0 extra pilis)
+        // This minimizes the damage of designating someone
+        return [...others].sort((a, b) => a.pilis - b.pilis)[0].id;
+
+      default:
+        return others[Math.floor(Math.random() * others.length)].id;
+    }
   }
 
   decideCardsToPass(hand: Card[], count: number): Card[] {

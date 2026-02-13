@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { MissionCardDef } from '@/types/game.types';
+import { MissionIcon } from './MissionIcon';
 
 interface MissionRevealOverlayProps {
   mission: MissionCardDef;
@@ -51,20 +52,20 @@ export function MissionRevealOverlay({ mission, onComplete }: MissionRevealOverl
           }
         `}
       >
-        {/* Mission number badge */}
+        {/* Mission icon badge */}
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ delay: 0.3, type: 'spring', stiffness: 400 }}
           className={`
-            w-12 h-12 rounded-full flex items-center justify-center text-xl font-black mx-auto mb-4
+            w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4
             ${mission.isExpert
               ? 'bg-accent-red/30 text-accent-red border-2 border-accent-red/50'
               : 'bg-accent-gold/30 text-accent-gold border-2 border-accent-gold/50'
             }
           `}
         >
-          {mission.id}
+          <MissionIcon missionId={mission.id} size={28} />
         </motion.div>
 
         <motion.h2

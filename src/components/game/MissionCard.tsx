@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import type { MissionCardDef } from '@/types/game.types';
+import { MissionIcon } from './MissionIcon';
 
 interface MissionCardProps {
   mission: MissionCardDef | null;
@@ -24,7 +25,9 @@ export function MissionCard({ mission }: MissionCardProps) {
       `}
     >
       <div className="flex items-center gap-1.5 mb-0.5">
-        <span className="text-[10px]">&#x1F3AF;</span>
+        <span className={`shrink-0 ${mission.isExpert ? 'text-accent-red' : 'text-accent-gold'}`}>
+          <MissionIcon missionId={mission.id} size={14} />
+        </span>
         <h4 className="font-bold text-[11px] text-foreground leading-tight truncate">{mission.name}</h4>
         {mission.isExpert && (
           <span className="text-[8px] px-1 py-px rounded bg-accent-red/20 text-accent-red font-bold shrink-0">
