@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useSocket } from '@/hooks/useSocket';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useRoomStore } from '@/stores/roomStore';
-import { useGameSocket } from '@/hooks/useGameSocket';
 import type { BotDifficulty, RoomSettings } from '@/types/game.types';
 
 /* ── Avatar colors per seat ── */
@@ -35,19 +34,8 @@ export default function RoomPage() {
   const { playerId } = usePlayerStore();
   const { room } = useRoomStore();
 
-  useGameSocket();
-
   const [showSettings, setShowSettings] = useState(false);
   const [copied, setCopied] = useState(false);
-
-  // Redirect to game page when game starts
-  useEffect(() => {
-    const handler = () => {
-      router.push(`/room/${code}/game`);
-    };
-    socket.on('game:started', handler);
-    return () => { socket.off('game:started', handler); };
-  }, [socket, router, code]);
 
   // Redirect to home if no room
   useEffect(() => {

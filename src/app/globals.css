@@ -15,8 +15,6 @@
   --text-secondary: #d4a373;
   --text-muted: #8b6f5f;
   --pili-token: #c1121f;
-  --card-gradient-start: #4a2020;
-  --card-gradient-end: #2d1515;
 }
 
 @theme inline {
@@ -45,68 +43,8 @@ body {
   min-height: 100dvh;
 }
 
-/* Smooth global transitions */
 * {
   -webkit-tap-highlight-color: transparent;
-}
-
-/* Card shine effect */
-@keyframes cardShine {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.card-shine {
-  background: linear-gradient(
-    120deg,
-    transparent 30%,
-    rgba(244, 162, 97, 0.1) 38%,
-    rgba(244, 162, 97, 0.2) 40%,
-    rgba(244, 162, 97, 0.1) 42%,
-    transparent 50%
-  );
-  background-size: 200% 100%;
-  animation: cardShine 3s infinite;
-}
-
-/* Pili token shake */
-@keyframes piliShake {
-  0%, 100% { transform: rotate(0deg); }
-  25% { transform: rotate(-8deg); }
-  75% { transform: rotate(8deg); }
-}
-
-.pili-shake {
-  animation: piliShake 0.4s ease-in-out;
-}
-
-/* Pulse glow for current turn */
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 8px rgba(244, 162, 97, 0.3); }
-  50% { box-shadow: 0 0 20px rgba(244, 162, 97, 0.6); }
-}
-
-.pulse-glow {
-  animation: pulseGlow 2s ease-in-out infinite;
-}
-
-/* Subtle float animation */
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-}
-
-.float {
-  animation: float 3s ease-in-out infinite;
-}
-
-/* Glow effects */
-.glow-gold {
-  box-shadow: 0 0 12px rgba(244, 162, 97, 0.4), 0 0 24px rgba(244, 162, 97, 0.2);
-}
-
-.glow-red {
-  box-shadow: 0 0 12px rgba(230, 57, 70, 0.4), 0 0 24px rgba(230, 57, 70, 0.2);
 }
 
 /* Button styles */
@@ -121,21 +59,6 @@ body {
   cursor: pointer;
   position: relative;
   overflow: hidden;
-}
-
-.btn-primary::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%);
-  background-size: 200% 200%;
-  opacity: 0;
-  transition: opacity 0.3s;
-}
-
-.btn-primary:hover::after {
-  opacity: 1;
-  animation: cardShine 1.5s ease;
 }
 
 .btn-primary:hover {
@@ -175,7 +98,7 @@ body {
   transform: translateY(0) scale(0.98);
 }
 
-/* Scrollbar - hidden by default for game */
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 4px;
 }
@@ -191,12 +114,4 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
-}
-
-/* Line clamp utility */
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { ClientToServerEvents, ServerToClientEvents } from '@/types/socket.types';
 
@@ -21,18 +21,13 @@ export function getSocket(): AppSocket {
 }
 
 export function useSocket(): AppSocket {
-  const socketRef = useRef<AppSocket>(getSocket());
+  const socket = getSocket();
 
   useEffect(() => {
-    const socket = socketRef.current;
     if (!socket.connected) {
       socket.connect();
     }
+  }, [socket]);
 
-    return () => {
-      // Don't disconnect on unmount — keep connection alive across pages
-    };
-  }, []);
-
-  return socketRef.current;
+  return socket;
 }
