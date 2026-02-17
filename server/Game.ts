@@ -190,8 +190,8 @@ export class Game {
 
     const card = player.hand[cardIndex];
 
-    // Joker: needs value choice first
-    if (card.isJoker && card.value === 0) {
+    // Joker: needs value choice first (value < 0 means unset)
+    if (card.isJoker && card.value < 0) {
       // Request joker value choice
       this.callbacks.emitToPlayer(playerId, 'game:stateUpdate', {
         gameState: {
@@ -905,8 +905,8 @@ export class Game {
       }
     }
 
-    // Handle joker value for bots
-    if (card.isJoker && card.value === 0) {
+    // Handle joker value for bots (value < 0 means unset)
+    if (card.isJoker && card.value < 0) {
       const wantWin = (player.bet ?? 0) > player.tricksWon;
       card.value = wantWin ? JOKER_HIGH_VALUE : JOKER_LOW_VALUE;
     }

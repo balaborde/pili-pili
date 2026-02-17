@@ -8,7 +8,8 @@ export class Deck {
       this.cards.push({ id: i, value: i, isJoker: false });
     }
     if (includeJoker) {
-      this.cards.push({ id: 0, value: 0, isJoker: true });
+      // Joker starts with value -1 to indicate it needs a value choice
+      this.cards.push({ id: 0, value: -1, isJoker: true });
     }
     this.shuffle();
   }

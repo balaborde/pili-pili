@@ -298,7 +298,7 @@ export default function GameView() {
       <div className="px-3 pb-4 pt-1">
         <AnimatePresence mode="wait">
           {/* Mission action (card pass, victim, joker) */}
-          {missionAction && phase === 'POST_BETTING' && (
+          {missionAction && (phase === 'POST_BETTING' || (phase === 'TRICK_PLAY' && missionAction.type === 'CHOOSE_JOKER_VALUE')) && (
             <MissionAction
               key="mission-action"
               action={missionAction}
@@ -324,7 +324,7 @@ export default function GameView() {
           )}
 
           {/* Player hand (during trick play and other phases where hand is visible) */}
-          {phase !== 'BETTING' && phase !== 'ROUND_START' && phase !== 'GAME_OVER' && myHand.length > 0 && (
+          {phase !== 'BETTING' && phase !== 'ROUND_START' && phase !== 'GAME_OVER' && myHand.length > 0 && !(missionAction?.type === 'CHOOSE_JOKER_VALUE') && (
             <PlayerHand
               key="hand"
               cards={myHand}
