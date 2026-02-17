@@ -336,6 +336,32 @@ export class Game {
     }
   }
 
+  replacePlayerWithBot(playerId: string, botName: string, difficulty: 'easy' | 'medium' | 'hard'): { ok: boolean; botId?: string; error?: string } {
+    const player = this.getPlayer(playerId);
+    if (!player) return { ok: false, error: 'Joueur introuvable' };
+
+    // Convert player to bot
+    player.isBot = true;
+    player.botDifficulty = difficulty;
+    player.name = botName;
+
+    // Broadcast updated state to all players
+    this.broadcastState();
+
+    // If it's the bot's turn and we're in an active phase, schedule bot action
+    if (this.phase === 'BETTING' && this.bettingOrder[this.currentBettorIndex] === playerId) {
+      this.scheduleBotAction(() => this.botPlaceBet(player));
+    } else if (this.phase === 'TRICK_PLAY' && !this.isSimultaneous && this.currentTurnPlayerId === playerId) {
+      this.scheduleBotAction(() => this.botPlayCard(player));
+    } else if (this.phase === 'TRICK_PLAY' && this.isSimultaneous && !this.simultaneousPlayed.has(playerId)) {
+      this.scheduleBotAction(() => this.botPlayCard(player));
+    } else if (this.phase === 'POST_BETTING' && !player.missionActionDone) {
+      this.scheduleBotAction(() => this.handleBotMissionAction(player));
+    }
+
+    return { ok: true, botId: playerId };
+  }
+
   destroy(): void {
     this.destroyed = true;
     this.clearAllTimers();

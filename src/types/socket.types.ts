@@ -31,6 +31,7 @@ export interface ClientToServerEvents {
   'game:missionAction': (data: { action: MissionActionPayload }) => void;
   'game:chooseJokerValue': (data: { value: 0 | 56 }) => void;
   'game:acknowledgePhase': () => void;
+  'game:leave': () => void;
 }
 
 export interface ServerToClientEvents {
@@ -54,4 +55,5 @@ export interface ServerToClientEvents {
   'game:gameOver': (data: { standings: PlayerRoundResult[]; winnerId: string }) => void;
   'game:error': (data: { message: string }) => void;
   'game:notification': (data: { message: string; type: 'info' | 'warning' | 'success' }) => void;
+  'game:playerReplacedByBot': (data: { playerId: string; botId: string; botName: string }) => void;
 }

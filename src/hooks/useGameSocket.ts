@@ -40,12 +40,19 @@ export function useGameSocket(): void {
       setShowGameOver(true);
     };
 
+    const onPlayerReplacedByBot = ({ playerId, botId, botName }: { playerId: string; botId: string; botName: string }) => {
+      // The gameState will be updated via game:stateUpdate, so we don't need to do anything here
+      // This event is mainly for logging/notification purposes
+      console.log(`Player ${playerId} replaced by bot ${botName}`);
+    };
+
     socket.on('room:gameStarted', onGameStarted);
     socket.on('game:stateUpdate', onStateUpdate);
     socket.on('game:phaseChange', onPhaseChange);
     socket.on('game:trickResult', onTrickResult);
     socket.on('game:roundResults', onRoundResults);
     socket.on('game:gameOver', onGameOver);
+    socket.on('game:playerReplacedByBot', onPlayerReplacedByBot);
 
     return () => {
       socket.off('room:gameStarted', onGameStarted);
@@ -54,6 +61,7 @@ export function useGameSocket(): void {
       socket.off('game:trickResult', onTrickResult);
       socket.off('game:roundResults', onRoundResults);
       socket.off('game:gameOver', onGameOver);
+      socket.off('game:playerReplacedByBot', onPlayerReplacedByBot);
     };
   }, [socket, setGameState, setShowRoundResults, setShowGameOver, setLastTrickResult, setGameStarted]);
 }

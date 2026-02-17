@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useSocket } from '@/hooks/useSocket';
 import { useGameStore } from '@/stores/gameStore';
 import { usePlayerStore } from '@/stores/playerStore';
@@ -43,6 +43,8 @@ export default function GameView() {
 
   const [showMissionReveal, setShowMissionReveal] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showLeaveMenu, setShowLeaveMenu] = useState(false);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const prevRoundRef = useRef(0);
 
   // Show mission reveal on new round
@@ -81,6 +83,14 @@ export default function GameView() {
     return () => { socket.off('game:error', handler); };
   }, [socket]);
 
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!showLeaveMenu) return;
+    const handleClick = () => setShowLeaveMenu(false);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [showLeaveMenu]);
+
   const handlePlayCard = useCallback((cardId: number) => {
     socket.emit('game:playCard', { cardId });
     selectCard(null);
@@ -111,6 +121,12 @@ export default function GameView() {
     clearGameState();
     setGameStarted(false);
   }, [clearGameState, setGameStarted]);
+
+  const handleLeaveGame = useCallback(() => {
+    socket.emit('game:leave');
+    clearGameState();
+    setGameStarted(false);
+  }, [socket, clearGameState, setGameStarted]);
 
   if (!gameState || !playerId) {
     return (
@@ -208,6 +224,113 @@ export default function GameView() {
 
       {/* Notifications */}
       <NotificationToast notifications={notifications} />
+
+      {/* Leave game menu button */}
+      <button
+        className="fixed top-3 right-3 z-40 w-10 h-10 rounded-full flex items-center justify-center"
+        style={{
+          background: 'rgba(61,31,31,0.9)',
+          border: '1px solid rgba(92,51,51,0.5)',
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowLeaveMenu(!showLeaveMenu);
+        }}
+      >
+        <span className="text-lg text-text-muted">⋮</span>
+      </button>
+
+      {/* Leave menu dropdown */}
+      <AnimatePresence>
+        {showLeaveMenu && (
+          <motion.div
+            className="fixed top-16 right-3 z-40 rounded-xl overflow-hidden"
+            style={{
+              background: 'rgba(45,21,21,0.98)',
+              border: '1px solid rgba(92,51,51,0.5)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+            }}
+            initial={{ opacity: 0, y: -10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="w-full px-4 py-3 text-sm font-bold text-left hover:bg-white/5 transition-colors"
+              style={{ color: 'var(--accent-red)' }}
+              onClick={() => {
+                setShowLeaveMenu(false);
+                setShowLeaveConfirm(true);
+              }}
+            >
+              🚪 Quitter la partie
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Leave confirmation modal */}
+      <AnimatePresence>
+        {showLeaveConfirm && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center px-6"
+            style={{ background: 'rgba(10,5,5,0.9)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowLeaveConfirm(false)}
+          >
+            <motion.div
+              className="rounded-2xl p-6 text-center max-w-xs w-full"
+              style={{
+                background: 'linear-gradient(145deg, rgba(61,31,31,0.98), rgba(45,21,21,0.98))',
+                border: '1px solid rgba(230,57,70,0.3)',
+                boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+              }}
+              initial={{ scale: 0.8, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-black text-accent-red mb-2">Quitter la partie ?</h3>
+              <p className="text-xs text-text-muted mb-6">
+                Vous serez remplacé par un bot. La partie continuera sans vous.
+              </p>
+
+              <div className="flex gap-3">
+                <motion.button
+                  className="flex-1 rounded-xl py-3 text-sm font-bold"
+                  style={{
+                    background: 'rgba(92,51,51,0.3)',
+                    border: '1px solid rgba(92,51,51,0.5)',
+                    color: 'var(--text-muted)',
+                  }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowLeaveConfirm(false)}
+                >
+                  Annuler
+                </motion.button>
+                <motion.button
+                  className="flex-1 rounded-xl py-3 text-sm font-bold"
+                  style={{
+                    background: 'rgba(230,57,70,0.2)',
+                    border: '1px solid rgba(230,57,70,0.5)',
+                    color: 'var(--accent-red)',
+                  }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setShowLeaveConfirm(false);
+                    handleLeaveGame();
+                  }}
+                >
+                  Quitter
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Top section: mission info + round */}
       <div className="px-3 pt-3 pb-1 flex flex-col items-center gap-2">

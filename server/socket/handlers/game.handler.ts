@@ -58,4 +58,60 @@ export function registerGameHandlers(io: AppServer, socket: AppSocket): void {
     if (!game) return;
     game.acknowledgePhase(info.playerId);
   });
+
+  socket.on('game:leave', () => {
+    const info = roomStore.getPlayerBySocket(socket.id);
+    if (!info) return;
+
+    const room = roomStore.getRoom(info.roomCode);
+    const game = gameStore.getGame(info.roomCode);
+
+    if (!room || !game) return;
+
+    // Get remaining human players (excluding the one leaving)
+    const remainingHumans = room.getPlayers().filter(p => !p.isBot && p.id !== info.playerId);
+
+    if (remainingHumans.length === 0) {
+      // Last human player - end game and delete room
+      gameStore.removeGame(info.roomCode);
+      roomStore.deleteRoom(info.roomCode);
+      io.to(info.roomCode).emit('game:notification', {
+        message: 'Partie terminée : tous les joueurs ont quitté',
+        type: 'info',
+      });
+    } else {
+      // Replace with bot
+      const botNames = ['Cayenne', 'Habanero', 'Jalapeño', 'Tabasco', 'Sriracha', 'Chipotle', 'Paprika', 'Wasabi'];
+      const botIndex = room.getPlayers().filter(p => p.isBot).length;
+      const botName = `${botNames[botIndex % botNames.length]} (Bot)`;
+
+      const result = game.replacePlayerWithBot(info.playerId, botName, 'medium');
+
+      if (result.ok && result.botId) {
+        // Update room
+        const player = room.getPlayers().find(p => p.id === info.playerId);
+        if (player) {
+          player.isBot = true;
+          player.botDifficulty = 'medium';
+          player.name = botName;
+        }
+
+        // Notify everyone
+        io.to(info.roomCode).emit('game:playerReplacedByBot', {
+          playerId: info.playerId,
+          botId: result.botId,
+          botName,
+        });
+
+        io.to(info.roomCode).emit('game:notification', {
+          message: `${botName} remplace le joueur`,
+          type: 'info',
+        });
+      }
+    }
+
+    // Remove socket mapping and leave room
+    roomStore.removeSocket(socket.id);
+    socket.leave(info.roomCode);
+  });
 }
