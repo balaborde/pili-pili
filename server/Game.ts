@@ -888,20 +888,41 @@ export class Game {
     this.botTimers.push(timer);
   }
 
+  // ── Bot Betting ────────────────────────────────────────────
+
   private botPlaceBet(player: GamePlayer): void {
     if (this.destroyed || this.phase !== 'BETTING') return;
 
+    const validBets = this.getValidBets(player);
+    if (validBets.length === 0) { this.placeBet(player.id, 0); return; }
+
+    let bet: number;
+    switch (player.botDifficulty) {
+      case 'easy':
+        bet = this.botBetEasy(player, validBets);
+        break;
+      case 'hard':
+        bet = this.botBetHard(player, validBets);
+        break;
+      default: // medium
+        bet = this.botBetMedium(player, validBets);
+        break;
+    }
+
+    this.placeBet(player.id, bet);
+  }
+
+  /** Compute valid bets respecting all constraints */
+  private getValidBets(player: GamePlayer): number[] {
     const constraints = this.currentMission.getBettingConstraints?.(this.buildMissionContext());
     const forbidden = new Set(constraints?.forbiddenValues ?? []);
 
     if (constraints?.allDifferent) {
-      const existing = this.getActivePlayers()
+      this.getActivePlayers()
         .filter(p => p.bet !== null && p.id !== player.id)
-        .map(p => p.bet!);
-      existing.forEach(b => forbidden.add(b));
+        .forEach(p => forbidden.add(p.bet!));
     }
 
-    // Last bettor constraint
     const isLastBettor = this.currentBettorIndex === this.bettingOrder.length - 1;
     if (isLastBettor) {
       const sumSoFar = this.getActivePlayers()
@@ -913,74 +934,374 @@ export class Game {
       }
     }
 
-    const validBets = Array.from({ length: this.cardsPerPlayer + 1 }, (_, i) => i)
+    return Array.from({ length: this.cardsPerPlayer + 1 }, (_, i) => i)
       .filter(b => !forbidden.has(b));
+  }
 
-    let bet: number;
-    if (player.botDifficulty === 'easy' || validBets.length === 0) {
-      bet = validBets[Math.floor(Math.random() * validBets.length)] ?? 0;
-    } else {
-      // Medium/Hard: estimate based on hand strength
-      const handStrength = player.hand.reduce((sum, c) => sum + c.value, 0);
-      const avgValue = handStrength / Math.max(1, player.hand.length);
-      const estimatedWins = Math.round((avgValue / 55) * this.cardsPerPlayer);
-      const clamped = Math.max(0, Math.min(this.cardsPerPlayer, estimatedWins));
-      bet = validBets.reduce((closest, b) =>
-        Math.abs(b - clamped) < Math.abs(closest - clamped) ? b : closest
-      , validBets[0]);
+  /** Estimate how many tricks this hand can win (card-by-card analysis) */
+  private estimateWins(hand: Card[], totalPlayers: number): number {
+    const invert = !!this.currentMission.invertValues;
+    // Threshold: a card "above" this is likely to win a trick
+    // With N players and values 1-55, median winning value ≈ 55 - 55/N
+    const winThreshold = invert ? (55 / totalPlayers) : 55 - (55 / totalPlayers);
+    let wins = 0;
+    for (const c of hand) {
+      if (c.isJoker) {
+        // Joker is flexible: count as ~0.6 wins (can be set high or low)
+        wins += 0.6;
+      } else if (invert ? c.value < winThreshold : c.value > winThreshold) {
+        // Scale confidence: the further from threshold, the more likely it wins
+        const distance = invert
+          ? (winThreshold - c.value) / winThreshold
+          : (c.value - winThreshold) / (55 - winThreshold);
+        wins += 0.5 + distance * 0.5;
+      } else {
+        // Weak cards might still win in small tricks
+        const distance = invert
+          ? (c.value - winThreshold) / (55 - winThreshold)
+          : (winThreshold - c.value) / winThreshold;
+        wins += Math.max(0, 0.15 - distance * 0.15);
+      }
+    }
+    return wins;
+  }
+
+  /** Easy: basic hand-strength estimate with some randomness */
+  private botBetEasy(player: GamePlayer, validBets: number[]): number {
+    const totalPlayers = this.getActivePlayers().length;
+    const estimated = this.estimateWins(player.hand, totalPlayers);
+    // Add random noise ±1
+    const noisy = estimated + (Math.random() * 2 - 1);
+    const target = Math.round(Math.max(0, Math.min(this.cardsPerPlayer, noisy)));
+    return this.closestValid(target, validBets);
+  }
+
+  /** Medium: better hand analysis, considers invert, and the joker */
+  private botBetMedium(player: GamePlayer, validBets: number[]): number {
+    const totalPlayers = this.getActivePlayers().length;
+    const estimated = this.estimateWins(player.hand, totalPlayers);
+
+    // Consider others' bets: if total bets are trending high, be more conservative
+    const otherBets = this.getActivePlayers()
+      .filter(p => p.bet !== null && p.id !== player.id)
+      .map(p => p.bet!);
+    const avgOtherBet = otherBets.length > 0
+      ? otherBets.reduce((s, b) => s + b, 0) / otherBets.length
+      : this.cardsPerPlayer / totalPlayers;
+    const totalExpected = avgOtherBet * (totalPlayers - 1) + estimated;
+    // If everyone is over-betting, reduce our estimate slightly
+    const adjustment = totalExpected > this.cardsPerPlayer
+      ? -(totalExpected - this.cardsPerPlayer) / totalPlayers
+      : 0;
+
+    const target = Math.round(Math.max(0, Math.min(this.cardsPerPlayer, estimated + adjustment)));
+    return this.closestValid(target, validBets);
+  }
+
+  /** Hard: precise card counting, joker hedging, strategic thinking */
+  private botBetHard(player: GamePlayer, validBets: number[]): number {
+    const totalPlayers = this.getActivePlayers().length;
+    const invert = !!this.currentMission.invertValues;
+    const hand = player.hand;
+
+    // Classify each card
+    let sureWins = 0;
+    let maybeWins = 0;
+    let hasJoker = false;
+    const midpoint = 28; // 55/2 ≈ 28
+
+    for (const c of hand) {
+      if (c.isJoker) { hasJoker = true; continue; }
+      if (invert) {
+        if (c.value <= 5) sureWins++;
+        else if (c.value <= 15) maybeWins++;
+      } else {
+        if (c.value >= 50) sureWins++;
+        else if (c.value >= 40) maybeWins++;
+      }
     }
 
-    this.placeBet(player.id, bet);
+    // Base estimate: sure wins + fraction of maybe wins
+    let estimated = sureWins + maybeWins * 0.45;
+
+    // Joker strategy: count it as a flexible tool
+    // If we have mostly high or mostly low cards, joker complements well
+    if (hasJoker) {
+      const nonJokerAvg = hand.filter(c => !c.isJoker).reduce((s, c) => s + c.value, 0)
+        / Math.max(1, hand.length - 1);
+      const handIsPolarized = invert ? nonJokerAvg < midpoint : nonJokerAvg > midpoint;
+      // If hand is strong, joker can be used as a dump (low) → don't add
+      // If hand is balanced, joker can be the swing card → add ~0.5
+      estimated += handIsPolarized ? 0.3 : 0.6;
+    }
+
+    // Factor in other players' bets for late-position advantage
+    const otherBets = this.getActivePlayers()
+      .filter(p => p.bet !== null && p.id !== player.id)
+      .map(p => p.bet!);
+    if (otherBets.length > 0) {
+      const totalOtherBets = otherBets.reduce((s, b) => s + b, 0);
+      const remainingTricks = this.cardsPerPlayer - totalOtherBets;
+      // Blend our estimate with what's "left": trust card analysis more (70/30)
+      estimated = estimated * 0.7 + Math.max(0, remainingTricks) * 0.3;
+    }
+
+    const target = Math.round(Math.max(0, Math.min(this.cardsPerPlayer, estimated)));
+    return this.closestValid(target, validBets);
   }
+
+  /** Pick the closest value to target among valid bets */
+  private closestValid(target: number, validBets: number[]): number {
+    return validBets.reduce((closest, b) =>
+      Math.abs(b - target) < Math.abs(closest - target) ? b : closest
+    , validBets[0]);
+  }
+
+  // ── Bot Card Play ─────────────────────────────────────────
 
   private botPlayCard(player: GamePlayer): void {
     if (this.destroyed || this.phase !== 'TRICK_PLAY') return;
     if (player.hand.length === 0) return;
 
-    let validCards = [...player.hand];
-
-    // Mission validation filter
-    if (this.currentMission.validatePlay) {
-      const ctx = this.buildMissionContext();
-      validCards = validCards.filter(c => {
-        const result = this.currentMission.validatePlay!(ctx, player.id, c);
-        return result.valid;
-      });
-    }
-
-    if (validCards.length === 0) validCards = [player.hand[0]];
+    let validCards = this.getValidCards(player);
+    const sorted = [...validCards].sort((a, b) => a.value - b.value);
 
     let card: Card;
-    if (player.botDifficulty === 'easy') {
-      card = validCards[Math.floor(Math.random() * validCards.length)];
-    } else {
-      // Medium/Hard: simple strategy
-      if (this.currentTrick.length === 0) {
-        // Leading: play high card if we want tricks, low if not
-        const wantTricks = (player.bet ?? 0) > player.tricksWon;
-        card = wantTricks ? validCards[validCards.length - 1] : validCards[0];
-      } else {
-        const currentHighest = Math.max(...this.currentTrick.map(tc => tc.card.value));
-        const wantTricks = (player.bet ?? 0) > player.tricksWon;
-        if (wantTricks) {
-          // Play lowest card that beats current highest
-          const beaters = validCards.filter(c => c.value > currentHighest);
-          card = beaters.length > 0 ? beaters[0] : validCards[0];
-        } else {
-          // Play lowest card
-          card = validCards[0];
-        }
-      }
+    switch (player.botDifficulty) {
+      case 'easy':
+        card = this.botPlayEasy(player, sorted);
+        break;
+      case 'hard':
+        card = this.botPlayHard(player, sorted);
+        break;
+      default: // medium
+        card = this.botPlayMedium(player, sorted);
+        break;
     }
 
-    // Handle joker value for bots (value < 0 means unset)
+    // Handle joker value
     if (card.isJoker && card.value < 0) {
-      const wantWin = (player.bet ?? 0) > player.tricksWon;
-      card.value = wantWin ? JOKER_HIGH_VALUE : JOKER_LOW_VALUE;
+      card.value = this.botChooseJokerValue(player);
     }
 
     this.playCard(player.id, card.id);
   }
+
+  /** Get valid cards respecting mission constraints */
+  private getValidCards(player: GamePlayer): Card[] {
+    let valid = [...player.hand];
+    if (this.currentMission.validatePlay) {
+      const ctx = this.buildMissionContext();
+      valid = valid.filter(c => this.currentMission.validatePlay!(ctx, player.id, c).valid);
+    }
+    return valid.length > 0 ? valid : [player.hand[0]];
+  }
+
+  /** How many more tricks does this player need? (negative = already over) */
+  private tricksNeeded(player: GamePlayer): number {
+    return (player.bet ?? 0) - player.tricksWon;
+  }
+
+  /** Would this card currently win the trick? */
+  private wouldWinTrick(card: Card): boolean {
+    if (this.currentTrick.length === 0) return true;
+    const invert = !!this.currentMission.invertValues;
+    const currentBest = this.currentTrick.reduce((best, tc) => {
+      if (invert) return tc.card.value < best ? tc.card.value : best;
+      return tc.card.value > best ? tc.card.value : best;
+    }, invert ? Infinity : -Infinity);
+    return invert ? card.value < currentBest : card.value > currentBest;
+  }
+
+  /** Easy: basic intent-based play (old medium logic) */
+  private botPlayEasy(player: GamePlayer, sorted: Card[]): Card {
+    const need = this.tricksNeeded(player);
+    if (this.currentTrick.length === 0) {
+      // Leading: high if want tricks, low if not
+      return need > 0 ? sorted[sorted.length - 1] : sorted[0];
+    }
+    const currentHighest = Math.max(...this.currentTrick.map(tc => tc.card.value));
+    if (need > 0) {
+      const beaters = sorted.filter(c => c.value > currentHighest);
+      return beaters.length > 0 ? beaters[0] : sorted[0];
+    }
+    return sorted[0];
+  }
+
+  /** Medium: considers position, tries not to over/under-shoot */
+  private botPlayMedium(player: GamePlayer, sorted: Card[]): Card {
+    const need = this.tricksNeeded(player);
+    const invert = !!this.currentMission.invertValues;
+    const effectiveSorted = invert ? [...sorted].reverse() : sorted;
+    // In inverted mode, "strong" = low value. effectiveSorted: weakest first → strongest last.
+
+    if (this.currentTrick.length === 0) {
+      // Leading
+      if (need > 0) {
+        // Play a strong card, but not our absolute strongest (save it)
+        const idx = Math.max(0, effectiveSorted.length - 2);
+        return effectiveSorted[idx];
+      } else if (need === 0) {
+        // Exact: play weakest to avoid winning more
+        return effectiveSorted[0];
+      } else {
+        // Over-shot: dump weakest
+        return effectiveSorted[0];
+      }
+    }
+
+    // Following
+    const currentBest = this.currentTrick.reduce((best, tc) => {
+      if (invert) return tc.card.value < best ? tc.card.value : best;
+      return tc.card.value > best ? tc.card.value : best;
+    }, invert ? Infinity : -Infinity);
+
+    if (need > 0) {
+      // Want tricks: play smallest winner
+      const beaters = effectiveSorted.filter(c =>
+        invert ? c.value < currentBest : c.value > currentBest
+      );
+      return beaters.length > 0 ? beaters[0] : effectiveSorted[0];
+    }
+
+    // Don't want tricks: play the highest non-winning card, or dump strongest if must win
+    const losers = effectiveSorted.filter(c =>
+      invert ? c.value > currentBest : c.value < currentBest
+    );
+    // Among losers, play the strongest (get rid of dangerous cards)
+    return losers.length > 0 ? losers[losers.length - 1] : effectiveSorted[effectiveSorted.length - 1];
+  }
+
+  /** Hard: advanced strategy with sabotage, position awareness, and joker tactics */
+  private botPlayHard(player: GamePlayer, sorted: Card[]): Card {
+    const need = this.tricksNeeded(player);
+    const tricksRemaining = this.cardsPerPlayer - this.trickNumber + 1;
+    const invert = !!this.currentMission.invertValues;
+    const totalPlayers = this.getActivePlayers().length;
+    const isLastToPlay = this.currentTrick.length === totalPlayers - 1;
+    const isLeading = this.currentTrick.length === 0;
+
+    // Separate joker from normal cards
+    const joker = sorted.find(c => c.isJoker && c.value < 0);
+    const normalCards = sorted.filter(c => !(c.isJoker && c.value < 0));
+    const effectiveNormal = invert ? [...normalCards].reverse() : normalCards;
+
+    // ── LEADING ──
+    if (isLeading) {
+      if (need > 0 && need >= tricksRemaining) {
+        // Must win every remaining trick: play strongest
+        return effectiveNormal.length > 0
+          ? effectiveNormal[effectiveNormal.length - 1]
+          : joker!;
+      }
+      if (need > 0) {
+        // Want some tricks: lead with a mid-strong card to probe others
+        const idx = Math.min(effectiveNormal.length - 1,
+          Math.floor(effectiveNormal.length * 0.6));
+        return effectiveNormal[idx] ?? joker!;
+      }
+      if (need === 0) {
+        // Exact bet: dump weakest cards safely
+        return effectiveNormal[0] ?? joker!;
+      }
+      // Over-shot (need < 0): play weakest
+      return effectiveNormal[0] ?? joker!;
+    }
+
+    // ── FOLLOWING ──
+    const currentBest = this.currentTrick.reduce((best, tc) => {
+      if (invert) return tc.card.value < best ? tc.card.value : best;
+      return tc.card.value > best ? tc.card.value : best;
+    }, invert ? Infinity : -Infinity);
+
+    const winners = effectiveNormal.filter(c =>
+      invert ? c.value < currentBest : c.value > currentBest
+    );
+    const losers = effectiveNormal.filter(c =>
+      invert ? c.value >= currentBest : c.value <= currentBest
+    );
+
+    if (need > 0) {
+      // ── Want tricks ──
+      if (isLastToPlay) {
+        // Last position: can win precisely with smallest winner
+        if (winners.length > 0) return winners[0];
+        // Can't win — dump a dangerous card we don't want later
+        return this.dumpCard(effectiveNormal);
+      }
+      // Not last: play a strong winner to secure the trick
+      if (winners.length > 0) {
+        // Play a strong winner (not necessarily the top — save that)
+        const idx = Math.min(winners.length - 1, Math.max(0, winners.length - 2));
+        return winners[idx];
+      }
+      // Can't win: dump a middle card
+      return this.dumpCard(effectiveNormal);
+    }
+
+    if (need === 0) {
+      // ── Exact: avoid winning more tricks ──
+      if (losers.length > 0) {
+        // Play the strongest loser: get rid of dangerous high cards
+        return losers[losers.length - 1];
+      }
+      // Must win... play smallest winner to minimize damage
+      if (winners.length > 0) return winners[0];
+      // Use joker as dump
+      if (joker) return joker;
+      return effectiveNormal[0];
+    }
+
+    // ── Over-shot: avoid winning at all costs ──
+    if (losers.length > 0) {
+      return losers[losers.length - 1];
+    }
+    // Forced to win: minimize future wins — play our strongest now
+    if (winners.length > 0) return winners[winners.length - 1];
+    if (joker) return joker;
+    return effectiveNormal[0];
+  }
+
+  /** Pick a card to "dump" — get rid of mid-range cards that are unpredictable */
+  private dumpCard(sorted: Card[]): Card {
+    // Dump a middle-value card: safer than extreme ones
+    if (sorted.length <= 2) return sorted[0];
+    const midIdx = Math.floor(sorted.length / 2);
+    return sorted[midIdx];
+  }
+
+  /** Choose joker value based on difficulty and game state */
+  private botChooseJokerValue(player: GamePlayer): number {
+    const need = this.tricksNeeded(player);
+    const tricksRemaining = this.cardsPerPlayer - this.trickNumber + 1;
+
+    if (player.botDifficulty === 'hard') {
+      // Hard: use joker as a precision tool
+      if (need > 0 && need >= tricksRemaining) {
+        // Must win remaining: play joker high
+        return JOKER_HIGH_VALUE;
+      }
+      if (need <= 0) {
+        // Don't need tricks: dump joker low
+        return JOKER_LOW_VALUE;
+      }
+      // Need some tricks but not desperate: use joker to win this trick
+      // if we're following and can't win with normal cards
+      if (this.currentTrick.length > 0) {
+        const currentHighest = Math.max(...this.currentTrick.map(tc => tc.card.value));
+        const hasNormalWinner = player.hand.some(c =>
+          !c.isJoker && c.value > currentHighest
+        );
+        return hasNormalWinner ? JOKER_LOW_VALUE : JOKER_HIGH_VALUE;
+      }
+      return JOKER_HIGH_VALUE;
+    }
+
+    // Easy/Medium: simple want-win logic
+    return need > 0 ? JOKER_HIGH_VALUE : JOKER_LOW_VALUE;
+  }
+
+  // ── Bot Mission Actions ───────────────────────────────────
 
   private handleBotMissionAction(player: GamePlayer): void {
     const req = this.currentMission.getRequiredAction?.('postBetting', this.buildMissionContext(), player.id);
@@ -990,19 +1311,47 @@ export class Game {
     }
 
     if (req.type === 'CHOOSE_CARDS_TO_PASS') {
-      // Bot passes lowest cards
-      const cardsToPass = player.hand.slice(0, req.count).map(c => c.id);
-      this.handleMissionAction(player.id, { type: 'CARDS_TO_PASS', cardIds: cardsToPass });
+      this.botPassCards(player, req.count);
     } else if (req.type === 'DESIGNATE_VICTIM') {
-      const others = this.getActivePlayers().filter(p => p.id !== player.id);
-      // Pick player with most pilis
-      const victim = others.sort((a, b) => b.pilis - a.pilis)[0];
-      if (victim) {
-        this.handleMissionAction(player.id, { type: 'DESIGNATE_VICTIM', victimId: victim.id });
-      } else {
-        player.missionActionDone = true;
-      }
+      this.botDesignateVictim(player);
     }
+  }
+
+  private botPassCards(player: GamePlayer, count: number): void {
+    const sorted = [...player.hand].sort((a, b) => a.value - b.value);
+    let cardsToPass: number[];
+
+    if (player.botDifficulty === 'hard') {
+      // Hard: pass mid-range cards that are hardest to control
+      // Keep extremes (strong winners / safe losers), dump the middle
+      const midStart = Math.floor((sorted.length - count) / 2);
+      cardsToPass = sorted.slice(midStart, midStart + count).map(c => c.id);
+    } else if (player.botDifficulty === 'medium') {
+      // Medium: pass weakest cards (keep strong hand)
+      cardsToPass = sorted.slice(0, count).map(c => c.id);
+    } else {
+      // Easy: pass weakest
+      cardsToPass = sorted.slice(0, count).map(c => c.id);
+    }
+
+    this.handleMissionAction(player.id, { type: 'CARDS_TO_PASS', cardIds: cardsToPass });
+  }
+
+  private botDesignateVictim(player: GamePlayer): void {
+    const others = this.getActivePlayers().filter(p => p.id !== player.id);
+    if (others.length === 0) { player.missionActionDone = true; return; }
+
+    let victim: GamePlayer;
+    if (player.botDifficulty === 'hard') {
+      // Hard: target the player closest to winning (fewest pilis)
+      // This is more strategic: prevent the leader from winning
+      victim = others.sort((a, b) => a.pilis - b.pilis)[0];
+    } else {
+      // Easy/Medium: target the player with the most pilis (least strategic)
+      victim = others.sort((a, b) => b.pilis - a.pilis)[0];
+    }
+
+    this.handleMissionAction(player.id, { type: 'DESIGNATE_VICTIM', victimId: victim.id });
   }
 
   private autoCompleteMissionAction(player: GamePlayer): void {
