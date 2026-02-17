@@ -4,185 +4,64 @@ import { useEffect } from 'react';
 import { useSocket } from './useSocket';
 import { useGameStore } from '@/stores/gameStore';
 import { useRoomStore } from '@/stores/roomStore';
-import { usePlayerStore } from '@/stores/playerStore';
+import type { ClientGameState, GamePhase, TrickCard, PlayerRoundResult } from '@/types/game.types';
 
-/**
- * Hook that wires all Socket.io events to Zustand stores.
- * Should be mounted once at the game layout level.
- */
 export function useGameSocket(): void {
   const socket = useSocket();
-  const gameStore = useGameStore;
-  const roomStore = useRoomStore;
-  const playerStore = usePlayerStore;
+  const setGameState = useGameStore((s) => s.setGameState);
+  const setShowRoundResults = useGameStore((s) => s.setShowRoundResults);
+  const setShowGameOver = useGameStore((s) => s.setShowGameOver);
+  const setLastTrickResult = useGameStore((s) => s.setLastTrickResult);
+  const setGameStarted = useRoomStore((s) => s.setGameStarted);
 
   useEffect(() => {
-    // Room events
-    socket.on('room:playerJoined', ({ player }) => {
-      roomStore.getState().addPlayer(player);
-    });
+    const onGameStarted = () => {
+      setGameStarted(true);
+    };
 
-    socket.on('room:playerLeft', ({ playerId }) => {
-      roomStore.getState().removePlayer(playerId);
-    });
+    const onStateUpdate = ({ gameState }: { gameState: ClientGameState }) => {
+      setGameState(gameState);
+    };
 
-    socket.on('room:botAdded', ({ bot }) => {
-      roomStore.getState().addPlayer(bot);
-    });
+    const onPhaseChange = ({ phase, gameState }: { phase: GamePhase; gameState: ClientGameState }) => {
+      setGameState(gameState);
+    };
 
-    socket.on('room:botRemoved', ({ botId }) => {
-      roomStore.getState().removePlayer(botId);
-    });
+    const onTrickResult = ({ winnerId, winnerName, trick }: { winnerId: string; winnerName: string; trick: TrickCard[] }) => {
+      setLastTrickResult({ winnerId, winnerName, trick });
+      setTimeout(() => setLastTrickResult(null), 2500);
+    };
 
-    socket.on('room:readyChanged', ({ playerId, ready }) => {
-      roomStore.getState().setPlayerReady(playerId, ready);
-    });
+    const onRoundResults = ({ results }: { results: PlayerRoundResult[] }) => {
+      setShowRoundResults(true);
+    };
 
-    socket.on('room:settingsUpdated', (settings) => {
-      roomStore.getState().updateSettings(settings);
-    });
+    const onGameOver = ({ standings, winnerId }: { standings: PlayerRoundResult[]; winnerId: string }) => {
+      setShowGameOver(true);
+    };
 
-    socket.on('room:error', ({ message }) => {
-      gameStore.getState().setError(message);
-      setTimeout(() => gameStore.getState().setError(null), 5000);
-    });
+    const onPlayerReplacedByBot = ({ playerId, botId, botName }: { playerId: string; botId: string; botName: string }) => {
+      // The gameState will be updated via game:stateUpdate, so we don't need to do anything here
+      // This event is mainly for logging/notification purposes
+      console.log(`Player ${playerId} replaced by bot ${botName}`);
+    };
 
-    // Game events
-    socket.on('game:started', ({ state }) => {
-      gameStore.getState().syncState(state);
-    });
-
-    socket.on('game:phaseChanged', ({ phase }) => {
-      gameStore.getState().setPhase(phase);
-    });
-
-    socket.on('game:missionRevealed', ({ mission }) => {
-      gameStore.getState().setMission(mission);
-    });
-
-    socket.on('game:cardsDealt', ({ hand, totalCards }) => {
-      gameStore.getState().setHand(hand);
-    });
-
-    socket.on('game:betPlaced', ({ playerId, bet }) => {
-      gameStore.getState().setBetPlaced(playerId, bet);
-    });
-
-    socket.on('game:allBetsRevealed', ({ bets }) => {
-      for (const { playerId, bet } of bets) {
-        gameStore.getState().setBetPlaced(playerId, bet);
-      }
-    });
-
-    socket.on('game:turnChanged', ({ currentPlayerIndex }) => {
-      gameStore.getState().setTurnChanged(currentPlayerIndex);
-    });
-
-    socket.on('game:cardPlayed', ({ playerId, play }) => {
-      gameStore.getState().addCardPlayed(playerId, play);
-    });
-
-    socket.on('game:trickWon', ({ winnerId, trick }) => {
-      gameStore.getState().setTrickWon(winnerId, trick);
-    });
-
-    socket.on('game:handUpdate', ({ hand }) => {
-      gameStore.getState().setHand(hand);
-    });
-
-    socket.on('game:roundScoring', (data) => {
-      gameStore.getState().setRoundScoring(data);
-    });
-
-    socket.on('game:roundEnd', ({ scores }) => {
-      gameStore.getState().setRoundEnd(scores);
-    });
-
-    socket.on('game:over', ({ finalStandings, eliminatedId }) => {
-      gameStore.getState().setGameOver(finalStandings, eliminatedId);
-    });
-
-    socket.on('game:stateSync', ({ state }) => {
-      gameStore.getState().syncState(state);
-    });
-
-    socket.on('game:peekStart', ({ durationMs }) => {
-      gameStore.getState().setPeeking(true, durationMs);
-    });
-
-    socket.on('game:peekEnd', () => {
-      gameStore.getState().setPeeking(false);
-    });
-
-    socket.on('game:opponentHandsRevealed', ({ hands }) => {
-      gameStore.getState().setVisibleOpponentHands(hands);
-    });
-
-    // Designate player mission
-    socket.on('game:designateRequired', () => {
-      gameStore.getState().setDesignateRequired(true);
-    });
-
-    // Card exchange mission
-    socket.on('game:exchangeRequired', ({ withPlayerId }) => {
-      gameStore.getState().setExchangeRequired({ winnerId: withPlayerId });
-    });
-
-    socket.on('game:exchangeTargeted', ({ winnerId }) => {
-      gameStore.getState().setExchangeAsTarget({ winnerId });
-    });
-
-    socket.on('game:betError', ({ message }) => {
-      gameStore.getState().setError(message);
-      setTimeout(() => gameStore.getState().setError(null), 5000);
-    });
-
-    socket.on('game:playError', ({ message }) => {
-      gameStore.getState().setError(message);
-      setTimeout(() => gameStore.getState().setError(null), 5000);
-    });
-
-    // Player status
-    socket.on('player:disconnected', ({ playerId }) => {
-      gameStore.getState().updatePlayerConnection(playerId, false);
-    });
-
-    socket.on('player:reconnected', ({ playerId }) => {
-      gameStore.getState().updatePlayerConnection(playerId, true);
-    });
+    socket.on('room:gameStarted', onGameStarted);
+    socket.on('game:stateUpdate', onStateUpdate);
+    socket.on('game:phaseChange', onPhaseChange);
+    socket.on('game:trickResult', onTrickResult);
+    socket.on('game:roundResults', onRoundResults);
+    socket.on('game:gameOver', onGameOver);
+    socket.on('game:playerReplacedByBot', onPlayerReplacedByBot);
 
     return () => {
-      socket.off('room:playerJoined');
-      socket.off('room:playerLeft');
-      socket.off('room:botAdded');
-      socket.off('room:botRemoved');
-      socket.off('room:readyChanged');
-      socket.off('room:settingsUpdated');
-      socket.off('room:error');
-      socket.off('game:started');
-      socket.off('game:phaseChanged');
-      socket.off('game:missionRevealed');
-      socket.off('game:cardsDealt');
-      socket.off('game:betPlaced');
-      socket.off('game:allBetsRevealed');
-      socket.off('game:turnChanged');
-      socket.off('game:cardPlayed');
-      socket.off('game:trickWon');
-      socket.off('game:handUpdate');
-      socket.off('game:roundScoring');
-      socket.off('game:roundEnd');
-      socket.off('game:over');
-      socket.off('game:stateSync');
-      socket.off('game:peekStart');
-      socket.off('game:peekEnd');
-      socket.off('game:opponentHandsRevealed');
-      socket.off('game:designateRequired');
-      socket.off('game:exchangeRequired');
-      socket.off('game:exchangeTargeted');
-      socket.off('game:betError');
-      socket.off('game:playError');
-      socket.off('player:disconnected');
-      socket.off('player:reconnected');
+      socket.off('room:gameStarted', onGameStarted);
+      socket.off('game:stateUpdate', onStateUpdate);
+      socket.off('game:phaseChange', onPhaseChange);
+      socket.off('game:trickResult', onTrickResult);
+      socket.off('game:roundResults', onRoundResults);
+      socket.off('game:gameOver', onGameOver);
+      socket.off('game:playerReplacedByBot', onPlayerReplacedByBot);
     };
-  }, [socket]);
+  }, [socket, setGameState, setShowRoundResults, setShowGameOver, setLastTrickResult, setGameStarted]);
 }

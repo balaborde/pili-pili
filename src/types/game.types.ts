@@ -1,56 +1,8 @@
 // ============================================================
-// Core Game Types — shared between client and server
+// Core Types — shared between client and server
 // ============================================================
 
-export enum GamePhase {
-  LOBBY = 'LOBBY',
-  ROUND_START = 'ROUND_START',
-  MISSION_REVEAL = 'MISSION_REVEAL',
-  DEALING = 'DEALING',
-  PRE_BET_MISSION = 'PRE_BET_MISSION',
-  BETTING = 'BETTING',
-  POST_BET_MISSION = 'POST_BET_MISSION',
-  TRICK_PLAY = 'TRICK_PLAY',
-  TRICK_RESOLUTION = 'TRICK_RESOLUTION',
-  ROUND_SCORING = 'ROUND_SCORING',
-  ROUND_END = 'ROUND_END',
-  GAME_OVER = 'GAME_OVER',
-}
-
-export interface Card {
-  id: string;
-  value: number; // 1-55 for numbered cards, 0 for joker (before declaration)
-  isJoker: boolean;
-}
-
-export interface PlayedCard {
-  playerId: string;
-  card: Card;
-  effectiveValue: number; // After joker declaration or reversed values
-  jokerDeclaredValue?: number;
-}
-
-export interface Trick {
-  plays: PlayedCard[];
-  winnerId: string | null;
-  trickNumber: number;
-}
-
 export type BotDifficulty = 'easy' | 'medium' | 'hard';
-
-export interface Player {
-  id: string;
-  name: string;
-  isBot: boolean;
-  botDifficulty?: BotDifficulty;
-  isConnected: boolean;
-  isReady: boolean;
-  hand: Card[];
-  bet: number | null;
-  tricksWon: number;
-  pilis: number;
-  seatIndex: number;
-}
 
 export interface ClientPlayer {
   id: string;
@@ -63,54 +15,6 @@ export interface ClientPlayer {
   tricksWon: number;
   pilis: number;
   seatIndex: number;
-  // Only populated if mission reveals hands (e.g. face-up)
-  visibleHand?: Card[];
-}
-
-export interface MissionCardDef {
-  id: string;
-  name: string;
-  description: string;
-  isExpert: boolean;
-  cardsPerPlayer: number;
-  params: Record<string, unknown>;
-}
-
-export interface RoundScoringData {
-  players: {
-    playerId: string;
-    name: string;
-    bet: number;
-    tricksWon: number;
-    basePilis: number; // |bet - tricksWon|
-    missionPilis: number; // Extra pilis from mission
-    rewardPilis: number; // Pilis removed (e.g. mission 13)
-    totalNewPilis: number;
-    totalPilis: number;
-  }[];
-}
-
-export interface PlayerScore {
-  playerId: string;
-  name: string;
-  pilis: number;
-  rank: number;
-}
-
-export interface ClientGameState {
-  phase: GamePhase;
-  roomCode: string;
-  players: ClientPlayer[];
-  myPlayerId: string;
-  myHand: Card[];
-  currentRound: number;
-  currentTrick: Trick;
-  previousTricks: Trick[];
-  currentMission: MissionCardDef | null;
-  currentPlayerIndex: number; // Whose turn to bet or play
-  dealerIndex: number;
-  totalTricksThisRound: number;
-  missionState: Record<string, unknown>;
 }
 
 export interface RoomSettings {
@@ -135,4 +39,142 @@ export interface RoomState {
   players: ClientPlayer[];
   settings: RoomSettings;
   isGameStarted: boolean;
+}
+
+// ============================================================
+// Card Types
+// ============================================================
+
+export interface Card {
+  id: number;       // 0 = joker, 1-55 = numbered
+  value: number;    // effective value (joker: 0 or 56 once chosen)
+  isJoker: boolean;
+}
+
+// ============================================================
+// Game Phase
+// ============================================================
+
+export type GamePhase =
+  | 'ROUND_START'
+  | 'DEALING'
+  | 'PRE_BETTING'
+  | 'BETTING'
+  | 'POST_BETTING'
+  | 'TRICK_PLAY'
+  | 'TRICK_RESOLVE'
+  | 'ROUND_END'
+  | 'GAME_OVER';
+
+// ============================================================
+// Mission Info (client-facing)
+// ============================================================
+
+export interface MissionInfo {
+  id: number;
+  name: string;
+  description: string;
+  difficulty: 'standard' | 'expert';
+  cardsPerPlayer: number;
+  icon: string;
+}
+
+// ============================================================
+// Trick
+// ============================================================
+
+export interface TrickCard {
+  playerId: string;
+  card: Card;
+}
+
+// ============================================================
+// Round Results
+// ============================================================
+
+export interface PlayerRoundResult {
+  playerId: string;
+  playerName: string;
+  bet: number;
+  tricksWon: number;
+  gap: number;
+  pilisGained: number;
+  pilisRemoved: number;
+  totalPilis: number;
+  isEliminated: boolean;
+}
+
+// ============================================================
+// Mission Action Requests (server → client)
+// ============================================================
+
+export type MissionActionRequest =
+  | { type: 'CHOOSE_CARDS_TO_PASS'; count: number; direction: 'left' | 'right' }
+  | { type: 'DESIGNATE_VICTIM'; excludeSelf: boolean }
+  | { type: 'CHOOSE_JOKER_VALUE' };
+
+// ============================================================
+// Mission Action Payloads (client → server)
+// ============================================================
+
+export type MissionActionPayload =
+  | { type: 'CARDS_TO_PASS'; cardIds: number[] }
+  | { type: 'DESIGNATE_VICTIM'; victimId: string };
+
+// ============================================================
+// Client Game Player (public info during game)
+// ============================================================
+
+export interface ClientGamePlayer {
+  id: string;
+  name: string;
+  isBot: boolean;
+  seatIndex: number;
+  cardCount: number;
+  bet: number | null;
+  tricksWon: number;
+  pilis: number;
+  isCurrentTurn: boolean;
+  isEliminated: boolean;
+  isConnected: boolean;
+}
+
+// ============================================================
+// Client Game State (personalized per player)
+// ============================================================
+
+export interface ClientGameState {
+  phase: GamePhase;
+  roundNumber: number;
+  trickNumber: number;
+  totalTricks: number;
+  mission: MissionInfo;
+
+  players: ClientGamePlayer[];
+
+  myHand: Card[];
+  visibleHands: Record<string, Card[]>;
+
+  currentTrick: TrickCard[];
+  leadPlayerId: string | null;
+
+  bettingOrder: string[];
+  currentBettorId: string | null;
+  bettingConstraint: {
+    sumSoFar: number;
+    forbiddenBet: number | null;
+  } | null;
+  forbiddenBetValues: number[];
+
+  currentTurnPlayerId: string | null;
+  turnTimeRemaining: number | null;
+
+  isSimultaneous: boolean;
+  simultaneousPlayed: string[];
+
+  missionAction: MissionActionRequest | null;
+
+  roundResults: PlayerRoundResult[] | null;
+  finalStandings: PlayerRoundResult[] | null;
+  winnerId: string | null;
 }

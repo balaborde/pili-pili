@@ -1,6 +1,7 @@
 import type { Server, Socket } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '../../../src/types/socket.types';
 import { roomStore } from '../../store/RoomStore';
+import { gameStore } from '../../store/GameStore';
 
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -9,65 +10,108 @@ export function registerGameHandlers(io: AppServer, socket: AppSocket): void {
   socket.on('game:placeBet', ({ bet }) => {
     const info = roomStore.getPlayerBySocket(socket.id);
     if (!info) return;
-
-    const engine = roomStore.getRoom(info.roomCode);
-    if (!engine) return;
-
-    const result = engine.placeBet(info.playerId, bet);
+    const game = gameStore.getGame(info.roomCode);
+    if (!game) return;
+    const result = game.placeBet(info.playerId, bet);
     if (!result.ok) {
-      socket.emit('game:betError', { message: result.error! });
+      socket.emit('game:error', { message: result.error! });
     }
   });
 
-  socket.on('game:playCard', ({ cardId, jokerDeclaredValue }) => {
+  socket.on('game:playCard', ({ cardId }) => {
     const info = roomStore.getPlayerBySocket(socket.id);
     if (!info) return;
-
-    const engine = roomStore.getRoom(info.roomCode);
-    if (!engine) return;
-
-    const result = engine.playCard(info.playerId, cardId, jokerDeclaredValue);
+    const game = gameStore.getGame(info.roomCode);
+    if (!game) return;
+    const result = game.playCard(info.playerId, cardId);
     if (!result.ok) {
-      socket.emit('game:playError', { message: result.error! });
+      socket.emit('game:error', { message: result.error! });
     }
   });
 
-  socket.on('game:passCards', ({ cardIds }) => {
+  socket.on('game:missionAction', ({ action }) => {
     const info = roomStore.getPlayerBySocket(socket.id);
     if (!info) return;
-
-    const engine = roomStore.getRoom(info.roomCode);
-    if (!engine) return;
-
-    const result = engine.submitPassCards(info.playerId, cardIds);
+    const game = gameStore.getGame(info.roomCode);
+    if (!game) return;
+    const result = game.handleMissionAction(info.playerId, action);
     if (!result.ok) {
-      socket.emit('game:playError', { message: result.error! });
+      socket.emit('game:error', { message: result.error! });
     }
   });
 
-  socket.on('game:exchangeCard', ({ cardId, targetPlayerId }) => {
+  socket.on('game:chooseJokerValue', ({ value }) => {
     const info = roomStore.getPlayerBySocket(socket.id);
     if (!info) return;
-
-    const engine = roomStore.getRoom(info.roomCode);
-    if (!engine) return;
-
-    const result = engine.submitExchange(info.playerId, cardId, targetPlayerId);
+    const game = gameStore.getGame(info.roomCode);
+    if (!game) return;
+    const result = game.chooseJokerValue(info.playerId, value);
     if (!result.ok) {
-      socket.emit('game:playError', { message: result.error! });
+      socket.emit('game:error', { message: result.error! });
     }
   });
 
-  socket.on('game:designatePlayer', ({ targetPlayerId }) => {
+  socket.on('game:acknowledgePhase', () => {
+    const info = roomStore.getPlayerBySocket(socket.id);
+    if (!info) return;
+    const game = gameStore.getGame(info.roomCode);
+    if (!game) return;
+    game.acknowledgePhase(info.playerId);
+  });
+
+  socket.on('game:leave', () => {
     const info = roomStore.getPlayerBySocket(socket.id);
     if (!info) return;
 
-    const engine = roomStore.getRoom(info.roomCode);
-    if (!engine) return;
+    const room = roomStore.getRoom(info.roomCode);
+    const game = gameStore.getGame(info.roomCode);
 
-    const result = engine.submitDesignation(info.playerId, targetPlayerId);
-    if (!result.ok) {
-      socket.emit('game:playError', { message: result.error! });
+    if (!room || !game) return;
+
+    // Get remaining human players (excluding the one leaving)
+    const remainingHumans = room.getPlayers().filter(p => !p.isBot && p.id !== info.playerId);
+
+    if (remainingHumans.length === 0) {
+      // Last human player - end game and delete room
+      gameStore.removeGame(info.roomCode);
+      roomStore.deleteRoom(info.roomCode);
+      io.to(info.roomCode).emit('game:notification', {
+        message: 'Partie terminée : tous les joueurs ont quitté',
+        type: 'info',
+      });
+    } else {
+      // Replace with bot
+      const botNames = ['Cayenne', 'Habanero', 'Jalapeño', 'Tabasco', 'Sriracha', 'Chipotle', 'Paprika', 'Wasabi'];
+      const botIndex = room.getPlayers().filter(p => p.isBot).length;
+      const botName = `${botNames[botIndex % botNames.length]} (Bot)`;
+
+      const result = game.replacePlayerWithBot(info.playerId, botName, 'medium');
+
+      if (result.ok && result.botId) {
+        // Update room
+        const player = room.getPlayers().find(p => p.id === info.playerId);
+        if (player) {
+          player.isBot = true;
+          player.botDifficulty = 'medium';
+          player.name = botName;
+        }
+
+        // Notify everyone
+        io.to(info.roomCode).emit('game:playerReplacedByBot', {
+          playerId: info.playerId,
+          botId: result.botId,
+          botName,
+        });
+
+        io.to(info.roomCode).emit('game:notification', {
+          message: `${botName} remplace le joueur`,
+          type: 'info',
+        });
+      }
     }
+
+    // Remove socket mapping and leave room
+    roomStore.removeSocket(socket.id);
+    socket.leave(info.roomCode);
   });
 }

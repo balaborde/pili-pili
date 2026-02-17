@@ -3,7 +3,8 @@ import type { Server as HttpServer } from 'http';
 import type { ClientToServerEvents, ServerToClientEvents } from '../../src/types/socket.types';
 import { registerLobbyHandlers } from './handlers/lobby.handler';
 import { registerGameHandlers } from './handlers/game.handler';
-import { registerReconnectHandlers, handleDisconnect } from './handlers/reconnect.handler';
+import { roomStore } from '../store/RoomStore';
+import { gameStore } from '../store/GameStore';
 
 export function createSocketServer(httpServer: HttpServer): SocketServer<ClientToServerEvents, ServerToClientEvents> {
   const io = new SocketServer<ClientToServerEvents, ServerToClientEvents>(httpServer, {
@@ -20,11 +21,33 @@ export function createSocketServer(httpServer: HttpServer): SocketServer<ClientT
 
     registerLobbyHandlers(io, socket);
     registerGameHandlers(io, socket);
-    registerReconnectHandlers(io, socket);
 
     socket.on('disconnect', (reason) => {
       console.log(`[Socket] Disconnected: ${socket.id} (${reason})`);
-      handleDisconnect(io, socket);
+
+      const info = roomStore.getPlayerBySocket(socket.id);
+      if (info) {
+        const game = gameStore.getGame(info.roomCode);
+        if (game) {
+          // In-game disconnection: mark player as disconnected but keep them
+          game.handleDisconnect(info.playerId);
+        } else {
+          // Lobby disconnection: remove player from room
+          const room = roomStore.getRoom(info.roomCode);
+          if (room) {
+            room.removePlayer(info.playerId);
+            socket.to(info.roomCode).emit('room:playerLeft', { playerId: info.playerId });
+
+            // Clean up empty rooms
+            if (room.getPlayers().length === 0) {
+              roomStore.deleteRoom(info.roomCode);
+            }
+          }
+        }
+
+        // Clean up socket mapping
+        roomStore.removeSocket(socket.id);
+      }
     });
   });
 

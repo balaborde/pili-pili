@@ -1,16 +1,13 @@
 import type {
-  Card,
-  ClientGameState,
   ClientPlayer,
-  GamePhase,
-  MissionCardDef,
-  PlayedCard,
-  PlayerScore,
   RoomSettings,
   RoomState,
-  RoundScoringData,
-  Trick,
   BotDifficulty,
+  ClientGameState,
+  GamePhase,
+  TrickCard,
+  PlayerRoundResult,
+  MissionActionPayload,
 } from './game.types';
 
 // ============================================================
@@ -28,17 +25,13 @@ export interface ClientToServerEvents {
   'room:startGame': () => void;
   'room:updateSettings': (data: Partial<RoomSettings>) => void;
 
-  // Game actions
+  // Game
   'game:placeBet': (data: { bet: number }) => void;
-  'game:playCard': (data: { cardId: string; jokerDeclaredValue?: number }) => void;
-  'game:passCards': (data: { cardIds: string[] }) => void;
-  'game:exchangeCard': (data: { cardId: string; targetPlayerId?: string }) => void;
-  'game:designatePlayer': (data: { targetPlayerId: string }) => void;
-  'game:acknowledgePeek': () => void;
-  'game:ackRoundEnd': () => void;
-
-  // Reconnection
-  'player:reconnect': (data: { sessionToken: string; roomCode: string }) => void;
+  'game:playCard': (data: { cardId: number }) => void;
+  'game:missionAction': (data: { action: MissionActionPayload }) => void;
+  'game:chooseJokerValue': (data: { value: 0 | 56 }) => void;
+  'game:acknowledgePhase': () => void;
+  'game:leave': () => void;
 }
 
 export interface ServerToClientEvents {
@@ -52,36 +45,15 @@ export interface ServerToClientEvents {
   'room:readyChanged': (data: { playerId: string; ready: boolean }) => void;
   'room:settingsUpdated': (data: RoomSettings) => void;
   'room:error': (data: { message: string }) => void;
+  'room:gameStarted': () => void;
 
-  // Game State Updates
-  'game:started': (data: { state: ClientGameState }) => void;
-  'game:phaseChanged': (data: { phase: GamePhase; phaseData?: Record<string, unknown> }) => void;
-  'game:missionRevealed': (data: { mission: MissionCardDef }) => void;
-  'game:cardsDealt': (data: { hand: Card[]; totalCards: number }) => void;
-  'game:betPlaced': (data: { playerId: string; bet: number }) => void;
-  'game:allBetsRevealed': (data: { bets: { playerId: string; bet: number }[] }) => void;
-  'game:betError': (data: { message: string }) => void;
-  'game:turnChanged': (data: { currentPlayerIndex: number }) => void;
-  'game:cardPlayed': (data: { playerId: string; play: PlayedCard }) => void;
-  'game:playError': (data: { message: string }) => void;
-  'game:trickWon': (data: { winnerId: string; trick: Trick }) => void;
-  'game:cardsPassRequired': (data: { direction: 'left' | 'right'; count: number }) => void;
-  'game:cardsReceived': (data: { cards: Card[] }) => void;
-  'game:exchangeRequired': (data: { withPlayerId: string }) => void;
-  'game:exchangeTargeted': (data: { winnerId: string }) => void;
-  'game:designateRequired': () => void;
-  'game:peekStart': (data: { durationMs: number }) => void;
-  'game:peekEnd': () => void;
-  'game:handUpdate': (data: { hand: Card[] }) => void;
-  'game:roundScoring': (data: RoundScoringData) => void;
-  'game:roundEnd': (data: { scores: PlayerScore[] }) => void;
-  'game:over': (data: { finalStandings: PlayerScore[]; eliminatedId: string }) => void;
-  'game:stateSync': (data: { state: ClientGameState }) => void;
-
-  // Visibility (mission-specific)
-  'game:opponentHandsRevealed': (data: { hands: { playerId: string; cards: Card[] }[] }) => void;
-
-  // Player status
-  'player:disconnected': (data: { playerId: string }) => void;
-  'player:reconnected': (data: { playerId: string }) => void;
+  // Game
+  'game:stateUpdate': (data: { gameState: ClientGameState }) => void;
+  'game:phaseChange': (data: { phase: GamePhase; gameState: ClientGameState }) => void;
+  'game:trickResult': (data: { winnerId: string; winnerName: string; trick: TrickCard[] }) => void;
+  'game:roundResults': (data: { results: PlayerRoundResult[] }) => void;
+  'game:gameOver': (data: { standings: PlayerRoundResult[]; winnerId: string }) => void;
+  'game:error': (data: { message: string }) => void;
+  'game:notification': (data: { message: string; type: 'info' | 'warning' | 'success' }) => void;
+  'game:playerReplacedByBot': (data: { playerId: string; botId: string; botName: string }) => void;
 }

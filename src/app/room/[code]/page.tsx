@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSocket } from '@/hooks/useSocket';
+import { useGameSocket } from '@/hooks/useGameSocket';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useRoomStore } from '@/stores/roomStore';
-import { useGameSocket } from '@/hooks/useGameSocket';
+import { useGameStore } from '@/stores/gameStore';
+import GameView from '@/components/game/GameView';
 import type { BotDifficulty, RoomSettings } from '@/types/game.types';
 
 /* ── Avatar colors per seat ── */
@@ -31,23 +33,32 @@ export default function RoomPage() {
   const params = useParams();
   const router = useRouter();
   const socket = useSocket();
+  useGameSocket(); // Listen to game events early
   const code = (params.code as string)?.toUpperCase();
   const { playerId } = usePlayerStore();
   const { room } = useRoomStore();
-
-  useGameSocket();
+  const gameState = useGameStore((s) => s.gameState);
 
   const [showSettings, setShowSettings] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Redirect to game page when game starts
+  // Handle disconnect: clean up stores and redirect
   useEffect(() => {
-    const handler = () => {
-      router.push(`/room/${code}/game`);
+    const handleDisconnect = () => {
+      console.log('[Room] Socket disconnected, cleaning up...');
+      // Clear stores on disconnect to avoid stale state
+      const { clearRoom } = useRoomStore.getState();
+      const { clearSession } = usePlayerStore.getState();
+      clearRoom();
+      clearSession();
+      router.push('/');
     };
-    socket.on('game:started', handler);
-    return () => { socket.off('game:started', handler); };
-  }, [socket, router, code]);
+
+    socket.on('disconnect', handleDisconnect);
+    return () => {
+      socket.off('disconnect', handleDisconnect);
+    };
+  }, [socket, router]);
 
   // Redirect to home if no room
   useEffect(() => {
@@ -55,6 +66,58 @@ export default function RoomPage() {
       router.push('/');
     }
   }, [room, playerId, router]);
+
+  // Socket listeners for lobby events
+  useEffect(() => {
+    const { addPlayer, removePlayer, setPlayerReady, updateSettings } = useRoomStore.getState();
+
+    const onPlayerJoined = ({ player }: { player: import('@/types/game.types').ClientPlayer }) => {
+      addPlayer(player);
+    };
+
+    const onPlayerLeft = ({ playerId: leftPlayerId }: { playerId: string }) => {
+      removePlayer(leftPlayerId);
+    };
+
+    const onBotAdded = ({ bot }: { bot: import('@/types/game.types').ClientPlayer }) => {
+      addPlayer(bot);
+    };
+
+    const onBotRemoved = ({ botId }: { botId: string }) => {
+      removePlayer(botId);
+    };
+
+    const onReadyChanged = ({ playerId: readyPlayerId, ready }: { playerId: string; ready: boolean }) => {
+      setPlayerReady(readyPlayerId, ready);
+    };
+
+    const onSettingsUpdated = (settings: import('@/types/game.types').RoomSettings) => {
+      updateSettings(settings);
+    };
+
+    const onRoomError = ({ message }: { message: string }) => {
+      console.error('[Room Error]', message);
+      alert(message); // Simple alert for now
+    };
+
+    socket.on('room:playerJoined', onPlayerJoined);
+    socket.on('room:playerLeft', onPlayerLeft);
+    socket.on('room:botAdded', onBotAdded);
+    socket.on('room:botRemoved', onBotRemoved);
+    socket.on('room:readyChanged', onReadyChanged);
+    socket.on('room:settingsUpdated', onSettingsUpdated);
+    socket.on('room:error', onRoomError);
+
+    return () => {
+      socket.off('room:playerJoined', onPlayerJoined);
+      socket.off('room:playerLeft', onPlayerLeft);
+      socket.off('room:botAdded', onBotAdded);
+      socket.off('room:botRemoved', onBotRemoved);
+      socket.off('room:readyChanged', onReadyChanged);
+      socket.off('room:settingsUpdated', onSettingsUpdated);
+      socket.off('room:error', onRoomError);
+    };
+  }, [socket]);
 
   if (!room) {
     return (
@@ -75,6 +138,11 @@ export default function RoomPage() {
         </motion.div>
       </div>
     );
+  }
+
+  // Show game view if game is active
+  if (room.isGameStarted || gameState) {
+    return <GameView />;
   }
 
   const isHost = playerId === room.hostId;
