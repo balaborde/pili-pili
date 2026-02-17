@@ -36,6 +36,11 @@ export function registerLobbyHandlers(io: AppServer, socket: AppSocket): void {
       return;
     }
 
+    if (room.isGameStarted()) {
+      socket.emit('room:error', { message: 'Une partie est déjà en cours' });
+      return;
+    }
+
     const currentPlayers = room.getPlayers();
     if (currentPlayers.length >= room.getSettings().maxPlayers) {
       socket.emit('room:error', { message: 'La room est pleine' });

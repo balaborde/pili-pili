@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSocket } from '@/hooks/useSocket';
 import { useGameStore } from '@/stores/gameStore';
@@ -27,6 +28,7 @@ interface Notification {
 
 export default function GameView() {
   const socket = useSocket();
+  const router = useRouter();
 
   const { playerId } = usePlayerStore();
   const gameState = useGameStore((s) => s.gameState);
@@ -126,7 +128,8 @@ export default function GameView() {
     socket.emit('game:leave');
     clearGameState();
     setGameStarted(false);
-  }, [socket, clearGameState, setGameStarted]);
+    router.push('/');
+  }, [socket, clearGameState, setGameStarted, router]);
 
   if (!gameState || !playerId) {
     return (

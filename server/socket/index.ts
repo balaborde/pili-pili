@@ -29,8 +29,24 @@ export function createSocketServer(httpServer: HttpServer): SocketServer<ClientT
       if (info) {
         const game = gameStore.getGame(info.roomCode);
         if (game) {
+          // In-game disconnection: mark player as disconnected but keep them
           game.handleDisconnect(info.playerId);
+        } else {
+          // Lobby disconnection: remove player from room
+          const room = roomStore.getRoom(info.roomCode);
+          if (room) {
+            room.removePlayer(info.playerId);
+            socket.to(info.roomCode).emit('room:playerLeft', { playerId: info.playerId });
+
+            // Clean up empty rooms
+            if (room.getPlayers().length === 0) {
+              roomStore.deleteRoom(info.roomCode);
+            }
+          }
         }
+
+        // Clean up socket mapping
+        roomStore.removeSocket(socket.id);
       }
     });
   });

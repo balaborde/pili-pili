@@ -42,6 +42,24 @@ export default function RoomPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Handle disconnect: clean up stores and redirect
+  useEffect(() => {
+    const handleDisconnect = () => {
+      console.log('[Room] Socket disconnected, cleaning up...');
+      // Clear stores on disconnect to avoid stale state
+      const { clearRoom } = useRoomStore.getState();
+      const { clearSession } = usePlayerStore.getState();
+      clearRoom();
+      clearSession();
+      router.push('/');
+    };
+
+    socket.on('disconnect', handleDisconnect);
+    return () => {
+      socket.off('disconnect', handleDisconnect);
+    };
+  }, [socket, router]);
+
   // Redirect to home if no room
   useEffect(() => {
     if (!room && !playerId) {

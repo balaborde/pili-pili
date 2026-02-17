@@ -322,7 +322,19 @@ export class Game {
 
   handleDisconnect(playerId: string): void {
     const player = this.getPlayer(playerId);
-    if (player) player.isConnected = false;
+    if (!player) return;
+
+    // Replace the disconnected player with a bot
+    player.isConnected = false;
+    player.isBot = true;
+    player.botDifficulty = 'medium';
+    player.name = `${player.name} (Bot)`;
+
+    console.log(`[Game] Player ${playerId} disconnected, replaced with bot`);
+
+    // If it's the bot's turn, trigger bot action
+    this.checkAndTriggerBotAction(playerId);
+
     this.broadcastState();
   }
 
@@ -333,6 +345,32 @@ export class Game {
       this.callbacks.emitToPlayer(playerId, 'game:stateUpdate', {
         gameState: this.getClientState(playerId),
       });
+    }
+  }
+
+  private checkAndTriggerBotAction(playerId: string): void {
+    const player = this.getPlayer(playerId);
+    if (!player || !player.isBot) return;
+
+    // Check if it's this bot's turn and trigger appropriate action
+    if (this.phase === 'BETTING') {
+      const currentBettorId = this.bettingOrder[this.currentBettorIndex];
+      if (currentBettorId === playerId) {
+        this.scheduleBotAction(() => this.botPlaceBet(player));
+      }
+    } else if (this.phase === 'TRICK_PLAY') {
+      if (this.isSimultaneous && !this.simultaneousPlayed.has(playerId)) {
+        this.scheduleBotAction(() => this.botPlayCard(player));
+      } else if (!this.isSimultaneous) {
+        const currentTurnId = this.turnOrder[this.currentTurnIndex];
+        if (currentTurnId === playerId) {
+          this.scheduleBotAction(() => this.botPlayCard(player));
+        }
+      }
+    } else if (this.phase === 'POST_BETTING') {
+      if (!player.missionActionDone) {
+        this.scheduleBotAction(() => this.handleBotMissionAction(player));
+      }
     }
   }
 
