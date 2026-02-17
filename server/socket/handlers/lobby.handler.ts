@@ -1,6 +1,8 @@
 import type { Server, Socket } from 'socket.io';
 import type { ClientToServerEvents, ServerToClientEvents } from '../../../src/types/socket.types';
 import { roomStore } from '../../store/RoomStore';
+import { gameStore } from '../../store/GameStore';
+import { Game } from '../../Game';
 
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -146,24 +148,64 @@ export function registerLobbyHandlers(io: AppServer, socket: AppSocket): void {
   });
 
   socket.on('room:startGame', () => {
+    console.log('[room:startGame] Received request');
     const info = roomStore.getPlayerBySocket(socket.id);
-    if (!info) return;
+    if (!info) {
+      console.log('[room:startGame] No player info found');
+      return;
+    }
 
     const room = roomStore.getRoom(info.roomCode);
-    if (!room) return;
+    if (!room) {
+      console.log('[room:startGame] No room found');
+      return;
+    }
 
     if (info.playerId !== room.getHostId()) {
+      console.log('[room:startGame] Not host');
       socket.emit('room:error', { message: "Seul l'hôte peut lancer la partie" });
       return;
     }
 
     const check = room.canStart();
     if (!check.ok) {
+      console.log('[room:startGame] Cannot start:', check.reason);
       socket.emit('room:error', { message: check.reason! });
       return;
     }
 
-    // TODO: Implement game start logic
-    socket.emit('room:error', { message: 'Le jeu n\'est pas encore implémenté' });
+    console.log('[room:startGame] Starting game for room', info.roomCode);
+
+    // Create Game instance with socket callbacks
+    const roomCode = info.roomCode;
+    const game = new Game(room.getPlayers(), room.getSettings(), {
+      emitToPlayer: (playerId: string, event: string, data: unknown) => {
+        const sockets = io.sockets.adapter.rooms.get(roomCode);
+        if (sockets) {
+          for (const sid of sockets) {
+            const playerInfo = roomStore.getPlayerBySocket(sid);
+            if (playerInfo?.playerId === playerId) {
+              io.to(sid).emit(event as keyof ServerToClientEvents, data as never);
+              break;
+            }
+          }
+        }
+      },
+      emitToAll: (event: string, data: unknown) => {
+        io.to(roomCode).emit(event as keyof ServerToClientEvents, data as never);
+      },
+    });
+
+    gameStore.setGame(info.roomCode, game);
+    room.setGameStarted(true);
+
+    console.log('[room:startGame] Emitting room:gameStarted to room', info.roomCode);
+    // Notify all players that game has started
+    io.to(info.roomCode).emit('room:gameStarted');
+
+    console.log('[room:startGame] Starting game engine');
+    // Start the game engine
+    game.start();
+    console.log('[room:startGame] Game started successfully');
   });
 }

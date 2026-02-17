@@ -21,6 +21,7 @@ export class Room {
   private players: RoomPlayer[] = [];
   private hostId: string | null = null;
   private settings: RoomSettings;
+  private gameStarted = false;
 
   constructor(roomCode: string, settings?: Partial<RoomSettings>) {
     this.roomCode = roomCode;
@@ -82,6 +83,14 @@ export class Room {
   setConnected(playerId: string, connected: boolean): void {
     const player = this.players.find((p) => p.id === playerId);
     if (player) player.isConnected = connected;
+  }
+
+  isGameStarted(): boolean {
+    return this.gameStarted;
+  }
+
+  setGameStarted(started: boolean): void {
+    this.gameStarted = started;
   }
 
   canStart(): { ok: boolean; reason?: string } {
