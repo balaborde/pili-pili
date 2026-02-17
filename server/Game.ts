@@ -435,14 +435,18 @@ export class Game {
       player.hand.sort((a, b) => a.value - b.value);
     }
 
+    // Check for forehead mode before broadcasting
+    const preBet = this.currentMission.preBetting?.(this.buildMissionContext());
+    if (preBet?.foreheadCards) {
+      this.foreheadActive = true;
+    }
+
     this.phase = 'DEALING';
     this.broadcastState();
 
     this.schedulePhaseTransition(() => {
       // Check for pre-betting actions
-      const preBet = this.currentMission.preBetting?.(this.buildMissionContext());
       if (preBet?.foreheadCards) {
-        this.foreheadActive = true;
         this.phase = 'PRE_BETTING';
         this.broadcastState();
         this.schedulePhaseTransition(() => this.startBetting(), PHASE_TRANSITION_DELAY_MS);
@@ -1101,8 +1105,8 @@ export class Game {
         isConnected: p.isConnected,
       })),
 
-      myHand: (this.foreheadActive && this.phase === 'BETTING')
-        ? []  // Can't see own cards during forehead betting
+      myHand: this.foreheadActive
+        ? []  // Can't see own cards during forehead mode
         : (me?.hand ?? []),
 
       visibleHands,

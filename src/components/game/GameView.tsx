@@ -446,8 +446,8 @@ export default function GameView() {
             />
           )}
 
-          {/* Player hand (during trick play and other phases where hand is visible) */}
-          {phase !== 'BETTING' && phase !== 'ROUND_START' && phase !== 'GAME_OVER' && myHand.length > 0 && !(missionAction?.type === 'CHOOSE_JOKER_VALUE') && (
+          {/* Player hand (visible during betting and trick play) */}
+          {phase !== 'ROUND_START' && phase !== 'GAME_OVER' && myHand.length > 0 && !(missionAction?.type === 'CHOOSE_JOKER_VALUE') && (
             <PlayerHand
               key="hand"
               cards={myHand}
