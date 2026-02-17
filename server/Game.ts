@@ -4,8 +4,6 @@ import type {
   TrickCard,
   PlayerRoundResult,
   ClientGameState,
-  ClientGamePlayer,
-  MissionInfo,
   MissionActionRequest,
   MissionActionPayload,
 } from '../src/types/game.types';
@@ -389,7 +387,7 @@ export class Game {
     // If it's the bot's turn and we're in an active phase, schedule bot action
     if (this.phase === 'BETTING' && this.bettingOrder[this.currentBettorIndex] === playerId) {
       this.scheduleBotAction(() => this.botPlaceBet(player));
-    } else if (this.phase === 'TRICK_PLAY' && !this.isSimultaneous && this.currentTurnPlayerId === playerId) {
+    } else if (this.phase === 'TRICK_PLAY' && !this.isSimultaneous && this.turnOrder[this.currentTurnIndex] === playerId) {
       this.scheduleBotAction(() => this.botPlayCard(player));
     } else if (this.phase === 'TRICK_PLAY' && this.isSimultaneous && !this.simultaneousPlayed.has(playerId)) {
       this.scheduleBotAction(() => this.botPlayCard(player));
@@ -1000,7 +998,6 @@ export class Game {
 
   /** Hard: precise card counting, joker hedging, strategic thinking */
   private botBetHard(player: GamePlayer, validBets: number[]): number {
-    const totalPlayers = this.getActivePlayers().length;
     const invert = !!this.currentMission.invertValues;
     const hand = player.hand;
 
@@ -1063,7 +1060,7 @@ export class Game {
     if (this.destroyed || this.phase !== 'TRICK_PLAY') return;
     if (player.hand.length === 0) return;
 
-    let validCards = this.getValidCards(player);
+    const validCards = this.getValidCards(player);
     const sorted = [...validCards].sort((a, b) => a.value - b.value);
 
     let card: Card;
@@ -1100,17 +1097,6 @@ export class Game {
   /** How many more tricks does this player need? (negative = already over) */
   private tricksNeeded(player: GamePlayer): number {
     return (player.bet ?? 0) - player.tricksWon;
-  }
-
-  /** Would this card currently win the trick? */
-  private wouldWinTrick(card: Card): boolean {
-    if (this.currentTrick.length === 0) return true;
-    const invert = !!this.currentMission.invertValues;
-    const currentBest = this.currentTrick.reduce((best, tc) => {
-      if (invert) return tc.card.value < best ? tc.card.value : best;
-      return tc.card.value > best ? tc.card.value : best;
-    }, invert ? Infinity : -Infinity);
-    return invert ? card.value < currentBest : card.value > currentBest;
   }
 
   /** Easy: basic intent-based play (old medium logic) */

@@ -9,10 +9,11 @@ Jeu de plis avec paris et missions. Version web multijoueur temps réel avec IA.
 ## 🎮 Caractéristiques
 
 - **Multijoueur temps réel** : 2-8 joueurs via WebSocket (Socket.io)
-- **Bots IA** : 3 niveaux de difficulté (Easy, Medium, Hard)
+- **Bots IA intelligents** : 3 niveaux de difficulté avec stratégies avancées
 - **17 missions** : Règles changeantes à chaque manche
 - **Design premium** : Thème piment/épices avec animations Framer Motion
-- **Reconnexion automatique** : Ne perdez pas votre partie en cas de déconnexion
+- **Remplacement automatique** : Les joueurs déconnectés sont remplacés par des bots
+- **Protection anti-rejoin** : Impossible de rejoindre une partie en cours
 - **Responsive** : Jouable sur desktop et mobile
 
 ## 🎯 Règles du Jeu
@@ -62,19 +63,27 @@ Le jeu sera accessible sur [http://localhost:3000](http://localhost:3000)
 ```
 pili-pili/
 ├── server/              # Serveur Node.js + Socket.io
-│   ├── game/           # Logique de jeu (GameEngine, Missions, IA)
-│   ├── socket/         # Handlers Socket.io
-│   └── store/          # RoomStore (état en mémoire)
+│   ├── Game.ts         # Moteur de jeu principal (800+ lignes, IA avancée)
+│   ├── Room.ts         # Gestion des salons et joueurs
+│   ├── Deck.ts         # Gestion du paquet de cartes
+│   ├── missions/       # 17 missions avec règles spéciales
+│   ├── socket/         # Handlers Socket.io (lobby, game, disconnect)
+│   └── store/          # RoomStore et GameStore (état en mémoire)
 ├── src/
 │   ├── app/            # Pages Next.js (App Router)
-│   ├── components/     # Composants React
-│   ├── hooks/          # Hooks Socket.io
-│   ├── stores/         # Stores Zustand
+│   ├── components/     # Composants React (GameView, cartes, animations)
+│   ├── hooks/          # Hooks Socket.io et game
+│   ├── stores/         # Stores Zustand (player, room, game)
 │   └── types/          # Types TypeScript partagés
 ```
 
 ### Principe Clé
 Le **serveur est la source de vérité unique**. Le client envoie des intentions ("je parie 3", "je joue la carte 42"), le serveur valide, exécute et broadcast le nouvel état.
+
+### Gestion de la Déconnexion
+- **En lobby** : Le joueur déconnecté est retiré de la room
+- **En partie** : Le joueur est automatiquement remplacé par un bot de difficulté moyenne
+- **Nettoyage** : Les rooms vides sont automatiquement supprimées
 
 ## 🎴 Les 17 Missions
 
@@ -100,17 +109,30 @@ Le **serveur est la source de vérité unique**. Le client envoie des intentions
 
 ⭐ = Mission Expert
 
-## 🤖 IA
+## 🤖 IA des Bots
 
-### Niveaux
-- **Easy** : Joue aléatoirement
-- **Medium** : Estime ses plis avec heuristiques simples
-- **Hard** : Stratégie probabiliste avancée
+Les bots sont progressivement plus intelligents, avec des stratégies distinctes :
 
-### Stratégie Hard
-- **Paris** : Compte les cartes fortes (>40 = 85% de gagner, 35-40 = 60%, etc.)
-- **Jeu** : Si tricks_won < bet → tenter de gagner (jouer juste au-dessus), sinon → dump les faibles
-- **Joker** : Toujours déclaré à 56 (max)
+### 🌱 Facile
+- **Paris** : Estimation par force de main + aléatoire (±1 pli)
+- **Jeu** : Logique basique — joue haut si besoin de plis, bas sinon
+- **Joker** : Déclaré selon besoin (56 si veut gagner, 0 sinon)
+
+### 🔥 Moyen
+- **Paris** : Analyse de main + ajustement selon les paris adverses
+- **Jeu** : Gestion de position — économise les meilleures cartes, dump des cartes dangereuses
+- **Cartes à passer** : Défausse des cartes faibles
+- **Joker** : Utilisé tactiquement selon la situation
+
+### 💀 Expert
+- **Paris** : Comptage précis par carte avec classification "sûr/probable", joker considéré comme hedge
+- **Jeu avancé** :
+  - **Position awareness** : Dernier à jouer = victoire précise avec la plus petite carte gagnante
+  - **Sabotage** : Évite de gagner quand au-dessus du pari, force les autres à gagner
+  - **Card dumping** : Se débarrasse des cartes "moyennes" imprévisibles (garde les extrêmes)
+  - **Joker tactique** : Sauvé si une carte normale peut gagner, sinon utilisé comme arme
+- **Désignation de victime** : Cible le leader (moins de Pilis) pour l'empêcher de gagner
+- **Cartes à passer** : Défausse des cartes mid-range difficiles à contrôler
 
 ## 📝 Scripts
 
@@ -129,9 +151,10 @@ npm run lint     # ESLint
 - Pili token : `#c1121f` (rouge poivron)
 
 ### Animations
-- Cartes : distribution, jeu, collection des plis
-- Pili : rebond + shake quand reçu
-- Timer : décompte circulaire vert→rouge
+- **Cartes** : Distribution fluide, jeu en éventail avec rotation, collection des plis
+- **Pili** : Rebond + shake quand reçu
+- **Tracker de pari** : Affichage dynamique avec code couleur (vert = exact, rouge = dépassé)
+- **Transitions** : Framer Motion pour tous les états de jeu
 
 ## 🐛 Debugging
 
