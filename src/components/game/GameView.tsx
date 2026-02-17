@@ -159,12 +159,15 @@ export default function GameView() {
     winnerId,
   } = gameState;
 
+  const me = players.find(p => p.id === playerId);
   const isMyTurnToPlay = isSimultaneous
     ? !simultaneousPlayed.includes(playerId) && phase === 'TRICK_PLAY'
     : currentTurnPlayerId === playerId && phase === 'TRICK_PLAY';
   const isMyTurnToBet = currentBettorId === playerId && phase === 'BETTING';
   const canPlayCards = isMyTurnToPlay && myHand.length > 0;
   const showBets = phase !== 'ROUND_START' && phase !== 'DEALING';
+  const showBetTracker = me?.bet !== null && me?.bet !== undefined
+    && ['POST_BETTING', 'TRICK_PLAY', 'TRICK_RESOLVE'].includes(phase);
 
   // Phase status message
   let statusMessage = '';
@@ -419,6 +422,43 @@ export default function GameView() {
 
       {/* Bottom section: betting / hand / mission action */}
       <div className="px-3 pb-4 pt-1">
+        {/* Bet tracker */}
+        <AnimatePresence>
+          {showBetTracker && me && (
+            <motion.div
+              className="flex items-center justify-center gap-3 mb-2"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 8 }}
+            >
+              <div
+                className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-[11px] font-bold"
+                style={{
+                  background: 'rgba(61,31,31,0.8)',
+                  border: '1px solid rgba(92,51,51,0.5)',
+                }}
+              >
+                <span style={{ color: 'var(--accent-gold)' }}>
+                  🎯 Pari : {me.bet}
+                </span>
+                <span
+                  className="w-px h-3"
+                  style={{ background: 'rgba(92,51,51,0.6)' }}
+                />
+                <span style={{
+                  color: me.tricksWon === me.bet
+                    ? '#588157'
+                    : me.tricksWon > me.bet!
+                      ? 'var(--accent-red)'
+                      : 'var(--text-secondary)',
+                }}>
+                  ✓ Plis : {me.tricksWon}/{totalTricks}
+                </span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <AnimatePresence mode="wait">
           {/* Mission action (card pass, victim, joker) */}
           {missionAction && (phase === 'POST_BETTING' || (phase === 'TRICK_PLAY' && missionAction.type === 'CHOOSE_JOKER_VALUE')) && (
