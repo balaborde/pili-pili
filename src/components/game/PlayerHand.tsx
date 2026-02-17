@@ -87,7 +87,7 @@ export default function PlayerHand({
                 animate={{
                   opacity: 1,
                   x: xOffset - 32,
-                  y: isSelected ? -20 - fanY : -fanY,
+                  y: isSelected ? -20 + fanY : fanY,
                   rotate: isSelected ? 0 : fanAngle,
                   scale: isSelected ? 1.08 : 1,
                 }}
