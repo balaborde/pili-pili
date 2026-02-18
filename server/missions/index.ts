@@ -33,7 +33,7 @@ export interface PreBettingResult {
 
 export interface BettingConstraints {
   forbiddenValues?: number[];
-  allDifferent?: boolean;
+  differentFromPrevious?: boolean;
 }
 
 export interface PostBettingResult {

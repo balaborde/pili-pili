@@ -48,7 +48,7 @@ const mission5: Mission = {
   description: 'Impossible de parier 1.',
   difficulty: 'standard',
   icon: '🚫',
-  getCardsPerPlayer: (n) => Math.floor(55 / n),
+  getCardsPerPlayer: () => 5,
   getBettingConstraints: () => ({ forbiddenValues: [1] }),
 };
 
@@ -58,7 +58,7 @@ const mission6: Mission = {
   description: 'Impossible de parier 0.',
   difficulty: 'standard',
   icon: '🚫',
-  getCardsPerPlayer: (n) => Math.floor(55 / n),
+  getCardsPerPlayer: () => 4,
   getBettingConstraints: () => ({ forbiddenValues: [0] }),
 };
 
@@ -117,7 +117,7 @@ const mission11: Mission = {
   description: 'Si votre pari est exact, retirez autant de pilis que la valeur de votre pari.',
   difficulty: 'standard',
   icon: '🎯',
-  getCardsPerPlayer: (n) => Math.floor(55 / n),
+  getCardsPerPlayer: () => 6,
   afterRound: (ctx) => {
     const removals = ctx.players
       .filter(p => p.bet !== null && p.bet === p.tricksWon && p.bet > 0)

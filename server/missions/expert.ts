@@ -7,7 +7,7 @@ const expert1: Mission = {
   description: 'Le 55 est le plus faible, le 1 est le plus fort !',
   difficulty: 'expert',
   icon: '🔀',
-  getCardsPerPlayer: (n) => Math.floor(55 / n),
+  getCardsPerPlayer: () => 6,
   invertValues: true,
 };
 
@@ -17,7 +17,7 @@ const expert2: Mission = {
   description: 'Comme les cartes sur le front, mais avec plus de cartes.',
   difficulty: 'expert',
   icon: '🤯',
-  getCardsPerPlayer: (n) => Math.min(3, Math.floor(55 / n)),
+  getCardsPerPlayer: () => 3,
   preBetting: () => ({ foreheadCards: true }),
   getVisibility: (ctx, viewerId) => {
     const visible: Record<string, Card[]> = {};
@@ -48,11 +48,11 @@ const expert3: Mission = {
 const expert4: Mission = {
   id: 104,
   name: 'Paris différents',
-  description: 'Tous les paris doivent être différents !',
+  description: 'Vous ne pouvez pas parier la même chose que le joueur précédent.',
   difficulty: 'expert',
   icon: '🎲',
-  getCardsPerPlayer: (n) => Math.floor(55 / n),
-  getBettingConstraints: () => ({ allDifferent: true }),
+  getCardsPerPlayer: () => 6,
+  getBettingConstraints: () => ({ differentFromPrevious: true }),
 };
 
 const expert5: Mission = {
@@ -61,7 +61,7 @@ const expert5: Mission = {
   description: 'Vous devez toujours jouer votre carte la plus forte ou la plus faible.',
   difficulty: 'expert',
   icon: '📊',
-  getCardsPerPlayer: (n) => Math.floor(55 / n),
+  getCardsPerPlayer: () => 5,
   validatePlay: (ctx, playerId, card) => {
     const player = ctx.players.find(p => p.id === playerId);
     if (!player || player.hand.length <= 1) return { valid: true };
@@ -82,7 +82,7 @@ function createCursedMission(id: number, cursedNumbers: number[]): Mission {
     description: `Les plis contenant les cartes ${cursedNumbers.join(', ')} donnent 1 pili au gagnant.`,
     difficulty: 'expert',
     icon: '☠️',
-    getCardsPerPlayer: (n) => Math.floor(55 / n),
+    getCardsPerPlayer: () => 5,
     afterTrick: (ctx, winnerId) => {
       const hasCursed = ctx.trickCards?.some(tc => cursedNumbers.includes(tc.card.value));
       if (hasCursed) {
@@ -103,7 +103,7 @@ const expert9: Mission = {
   description: 'Désignez un joueur. Vous recevrez aussi ses pilis en fin de manche.',
   difficulty: 'expert',
   icon: '🎯',
-  getCardsPerPlayer: (n) => Math.floor(55 / n),
+  getCardsPerPlayer: () => 5,
   getRequiredAction: (phase) =>
     phase === 'postBetting' ? { type: 'DESIGNATE_VICTIM', excludeSelf: true } : null,
 };

@@ -142,12 +142,11 @@ export class Game {
     if (constraints?.forbiddenValues?.includes(bet)) {
       return { ok: false, error: `Le pari ${bet} est interdit par la mission` };
     }
-    if (constraints?.allDifferent) {
-      const existing = this.getActivePlayers()
-        .filter(p => p.bet !== null && p.id !== playerId)
-        .map(p => p.bet!);
-      if (existing.includes(bet)) {
-        return { ok: false, error: 'Tous les paris doivent être différents' };
+    if (constraints?.differentFromPrevious) {
+      const prevId = this.bettingOrder[this.currentBettorIndex - 1];
+      const prev = prevId ? this.getPlayer(prevId) : null;
+      if (prev?.bet !== null && prev?.bet === bet) {
+        return { ok: false, error: 'Vous ne pouvez pas parier pareil que le joueur précédent' };
       }
     }
 
@@ -589,6 +588,7 @@ export class Game {
 
       // Timeout fallback
       this.schedulePhaseTransition(() => {
+        if (this.phase !== 'POST_BETTING') return; // Already moved past this phase
         // Auto-complete for any player who hasn't acted
         for (const p of active) {
           if (!p.missionActionDone) {
@@ -915,10 +915,12 @@ export class Game {
     const constraints = this.currentMission.getBettingConstraints?.(this.buildMissionContext());
     const forbidden = new Set(constraints?.forbiddenValues ?? []);
 
-    if (constraints?.allDifferent) {
-      this.getActivePlayers()
-        .filter(p => p.bet !== null && p.id !== player.id)
-        .forEach(p => forbidden.add(p.bet!));
+    if (constraints?.differentFromPrevious) {
+      const prevId = this.bettingOrder[this.currentBettorIndex - 1];
+      const prev = prevId ? this.getPlayer(prevId) : null;
+      if (prev?.bet !== null && prev?.bet !== undefined) {
+        forbidden.add(prev.bet);
+      }
     }
 
     const isLastBettor = this.currentBettorIndex === this.bettingOrder.length - 1;
@@ -1213,6 +1215,7 @@ export class Game {
         // Last position: can win precisely with smallest winner
         if (winners.length > 0) return winners[0];
         // Can't win — dump a dangerous card we don't want later
+        if (effectiveNormal.length === 0) return joker ?? sorted[0];
         return this.dumpCard(effectiveNormal);
       }
       // Not last: play a strong winner to secure the trick
@@ -1222,6 +1225,7 @@ export class Game {
         return winners[idx];
       }
       // Can't win: dump a middle card
+      if (effectiveNormal.length === 0) return joker ?? sorted[0];
       return this.dumpCard(effectiveNormal);
     }
 
@@ -1399,11 +1403,12 @@ export class Game {
     // Forbidden bet values from mission
     const constraints = this.currentMission.getBettingConstraints?.(this.buildMissionContext());
     let forbiddenBetValues = constraints?.forbiddenValues ?? [];
-    if (constraints?.allDifferent) {
-      const existing = active
-        .filter(p => p.bet !== null && p.id !== forPlayerId)
-        .map(p => p.bet!);
-      forbiddenBetValues = [...forbiddenBetValues, ...existing];
+    if (constraints?.differentFromPrevious) {
+      const prevId = this.bettingOrder[this.currentBettorIndex - 1];
+      const prev = prevId ? this.getPlayer(prevId) : null;
+      if (prev?.bet !== null && prev?.bet !== undefined) {
+        forbiddenBetValues = [...forbiddenBetValues, prev.bet];
+      }
     }
 
     // Mission action for this player
@@ -1548,6 +1553,7 @@ export class Game {
   }
 
   private schedulePhaseTransition(action: () => void, delayMs: number): void {
+    if (this.phaseTimer) clearTimeout(this.phaseTimer);
     this.phaseTimer = setTimeout(() => {
       if (!this.destroyed) action();
     }, delayMs);
