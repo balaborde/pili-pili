@@ -857,27 +857,10 @@ export class Game {
     let bestEntry = this.currentTrick[0];
     for (let i = 1; i < this.currentTrick.length; i++) {
       const entry = this.currentTrick[i];
-      if (invertValues) {
-        // Lower value wins (but joker 56 still wins, joker 0 still loses)
-        if (entry.card.isJoker) {
-          if (entry.card.value === JOKER_HIGH_VALUE) {
-            bestEntry = entry; // joker 56 always wins
-          }
-          // joker 0 always loses, skip
-        } else if (bestEntry.card.isJoker) {
-          if (bestEntry.card.value === 0) {
-            bestEntry = entry; // current beats joker 0
-          }
-          // joker 56 still wins, skip
-        } else if (entry.card.value < bestEntry.card.value) {
-          bestEntry = entry;
-        }
-      } else {
-        // Higher value wins
-        if (entry.card.value > bestEntry.card.value) {
-          bestEntry = entry;
-        }
-      }
+      const better = invertValues
+        ? entry.card.value < bestEntry.card.value
+        : entry.card.value > bestEntry.card.value;
+      if (better) bestEntry = entry;
     }
 
     return { winnerId: bestEntry.playerId, card: bestEntry.card };
