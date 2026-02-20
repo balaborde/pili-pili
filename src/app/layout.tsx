@@ -27,6 +27,11 @@ const nunito = Nunito({
 export const metadata: Metadata = {
   title: { absolute: "PiliPili - Jeu de Cartes en Ligne" },
   description: "Jeu de plis avec paris et missions. Jouez en ligne avec vos amis ou contre l'IA !",
+  appleWebApp: {
+    capable: true,
+    title: "Pili Pili",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export default function RootLayout({
