@@ -28,8 +28,10 @@ export function useGameSocket(): void {
     };
 
     const onTrickResult = ({ winnerId, winnerName, trick }: { winnerId: string; winnerName: string; trick: TrickCard[] }) => {
-      setLastTrickResult({ winnerId, winnerName, trick });
-      setTimeout(() => setLastTrickResult(null), 2500);
+      setTimeout(() => {
+        setLastTrickResult({ winnerId, winnerName, trick });
+        setTimeout(() => setLastTrickResult(null), 2500);
+      }, 1000);
     };
 
     const onRoundResults = ({ results }: { results: PlayerRoundResult[] }) => {

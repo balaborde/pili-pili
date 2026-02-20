@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { Check } from 'lucide-react';
 import type { PlayerRoundResult } from '@/types/game.types';
 
 interface RoundResultsProps {
@@ -88,37 +89,52 @@ export default function RoundResults({
                     {r.tricksWon}
                   </span>
                   <span
-                    className={`w-10 text-center text-xs font-black ${
+                    className={`w-10 flex items-center justify-center text-xs font-black ${
                       isSuccess ? 'text-accent-green' : 'text-accent-red'
                     }`}
                   >
-                    {isSuccess ? '✓' : r.gap}
+                    {isSuccess ? <Check size={13} /> : r.gap}
                   </span>
-                  <span className="w-14 text-center">
+                  <div className="w-14 flex flex-col items-center gap-0.5">
                     <span className="text-xs font-bold text-foreground">
                       {r.totalPilis}
                     </span>
-                    {r.pilisGained > 0 && (
-                      <motion.span
-                        className="text-[10px] text-pili font-black ml-0.5"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.3 + i * 0.08, type: 'spring' }}
-                      >
-                        +{r.pilisGained}
-                      </motion.span>
-                    )}
-                    {r.pilisRemoved > 0 && (
-                      <motion.span
-                        className="text-[10px] text-accent-green font-black ml-0.5"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.3 + i * 0.08, type: 'spring' }}
-                      >
-                        -{r.pilisRemoved}
-                      </motion.span>
-                    )}
-                  </span>
+                    <div className="flex flex-wrap justify-center gap-0.5">
+                      {r.gap > 0 && (
+                        <motion.span
+                          className="text-[10px] font-black"
+                          style={{ color: 'var(--accent-red)' }}
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 0.3 + i * 0.08, type: 'spring' }}
+                        >
+                          +{r.gap}
+                        </motion.span>
+                      )}
+                      {r.missionPilis > 0 && (
+                        <motion.span
+                          className="text-[10px] font-black"
+                          style={{ color: '#f4845f' }}
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 0.35 + i * 0.08, type: 'spring' }}
+                        >
+                          +{r.missionPilis}
+                        </motion.span>
+                      )}
+                      {r.pilisRemoved > 0 && (
+                        <motion.span
+                          className="text-[10px] font-black"
+                          style={{ color: 'var(--accent-green)' }}
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 0.4 + i * 0.08, type: 'spring' }}
+                        >
+                          -{r.pilisRemoved}
+                        </motion.span>
+                      )}
+                    </div>
+                  </div>
                 </motion.div>
               );
             })}

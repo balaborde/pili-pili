@@ -6,7 +6,7 @@ const expert1: Mission = {
   name: 'Valeurs inversées',
   description: 'Le 55 est le plus faible, le 1 est le plus fort !',
   difficulty: 'expert',
-  icon: '🔀',
+  icon: 'Shuffle',
   getCardsPerPlayer: () => 6,
   invertValues: true,
 };
@@ -16,7 +16,7 @@ const expert2: Mission = {
   name: 'Front expert',
   description: 'Comme les cartes sur le front, mais avec plus de cartes.',
   difficulty: 'expert',
-  icon: '🤯',
+  icon: 'HatGlasses',
   getCardsPerPlayer: () => 3,
   preBetting: () => ({ foreheadCards: true }),
   getVisibility: (ctx, viewerId) => {
@@ -35,7 +35,7 @@ const expert3: Mission = {
   name: 'Pénalité premier/dernier',
   description: 'Le gagnant du premier et du dernier pli reçoit 1 pili en plus.',
   difficulty: 'expert',
-  icon: '⚠️',
+  icon: 'AlertTriangle',
   getCardsPerPlayer: () => 6,
   afterTrick: (ctx, winnerId) => {
     if (ctx.trickNumber === 1 || ctx.trickNumber === ctx.totalTricks) {
@@ -50,7 +50,7 @@ const expert4: Mission = {
   name: 'Paris différents',
   description: 'Vous ne pouvez pas parier la même chose que le joueur précédent.',
   difficulty: 'expert',
-  icon: '🎲',
+  icon: 'Dices',
   getCardsPerPlayer: () => 6,
   getBettingConstraints: () => ({ differentFromPrevious: true }),
 };
@@ -60,7 +60,7 @@ const expert5: Mission = {
   name: 'Carte extrême',
   description: 'Vous devez toujours jouer votre carte la plus forte ou la plus faible.',
   difficulty: 'expert',
-  icon: '📊',
+  icon: 'ArrowUpDown',
   getCardsPerPlayer: () => 5,
   validatePlay: (ctx, playerId, card) => {
     const player = ctx.players.find(p => p.id === playerId);
@@ -81,7 +81,7 @@ function createCursedMission(id: number, cursedNumbers: number[]): Mission {
     name: `Numéros maudits (${cursedNumbers.join(', ')})`,
     description: `Les plis contenant les cartes ${cursedNumbers.join(', ')} donnent 1 pili au gagnant.`,
     difficulty: 'expert',
-    icon: '☠️',
+    icon: 'Skull',
     getCardsPerPlayer: () => 5,
     afterTrick: (ctx, winnerId) => {
       const hasCursed = ctx.trickCards?.some(tc => cursedNumbers.includes(tc.card.value));
@@ -102,7 +102,7 @@ const expert9: Mission = {
   name: 'Désignation de victime',
   description: 'Désignez un joueur. Vous recevrez aussi ses pilis en fin de manche.',
   difficulty: 'expert',
-  icon: '🎯',
+  icon: 'Target',
   getCardsPerPlayer: () => 5,
   getRequiredAction: (phase) =>
     phase === 'postBetting' ? { type: 'DESIGNATE_VICTIM', excludeSelf: true } : null,

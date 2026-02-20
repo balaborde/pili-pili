@@ -93,6 +93,13 @@ export class Room {
     this.gameStarted = started;
   }
 
+  resetForLobby(): void {
+    this.gameStarted = false;
+    for (const p of this.players) {
+      if (!p.isBot) p.isReady = false;
+    }
+  }
+
   canStart(): { ok: boolean; reason?: string } {
     const humans = this.players.filter((p) => !p.isBot);
     if (this.players.length < 2) {

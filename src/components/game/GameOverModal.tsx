@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { Trophy } from 'lucide-react';
 import type { PlayerRoundResult } from '@/types/game.types';
 
 interface GameOverModalProps {
@@ -75,11 +76,11 @@ export default function GameOverModal({
           }}
         >
           <motion.div
-            className="text-4xl mb-2"
+            className="flex justify-center mb-2"
             animate={{ scale: [1, 1.15, 1], rotate: [0, 5, -5, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            🏆
+            <Trophy size={40} style={{ color: 'var(--accent-gold)' }} />
           </motion.div>
           <h2 className="text-xl font-black text-accent-gold">
             Fin de partie !

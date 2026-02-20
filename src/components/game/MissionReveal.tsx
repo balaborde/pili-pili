@@ -1,6 +1,8 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { Layers } from 'lucide-react';
+import MissionIcon from './MissionIcon';
 import type { MissionInfo } from '@/types/game.types';
 
 interface MissionRevealProps {
@@ -56,12 +58,16 @@ export default function MissionReveal({
 
           {/* Icon */}
           <motion.div
-            className="text-5xl mb-3"
+            className="flex justify-center mb-3"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: 'spring', stiffness: 300 }}
           >
-            {mission.icon}
+            <MissionIcon
+              name={mission.icon}
+              size={48}
+              style={{ color: mission.difficulty === 'expert' ? 'var(--pili-token)' : 'var(--accent-gold)' }}
+            />
           </motion.div>
 
           {/* Name */}
@@ -114,7 +120,7 @@ export default function MissionReveal({
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            <span className="text-lg">🃏</span>
+            <Layers size={20} style={{ color: 'var(--accent-gold)' }} />
             <span className="text-sm font-bold text-accent-gold">
               {mission.cardsPerPlayer} carte{mission.cardsPerPlayer > 1 ? 's' : ''} / joueur
             </span>

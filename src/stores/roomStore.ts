@@ -9,6 +9,7 @@ interface RoomStoreState {
   setPlayerReady: (playerId: string, ready: boolean) => void;
   updateSettings: (settings: RoomSettings) => void;
   setGameStarted: (started: boolean) => void;
+  setHostId: (hostId: string) => void;
   clearRoom: () => void;
 }
 
@@ -62,6 +63,12 @@ export const useRoomStore = create<RoomStoreState>((set) => ({
     set((state) => {
       if (!state.room) return state;
       return { room: { ...state.room, isGameStarted: started } };
+    }),
+
+  setHostId: (hostId) =>
+    set((state) => {
+      if (!state.room) return state;
+      return { room: { ...state.room, hostId } };
     }),
 
   clearRoom: () => set({ room: null }),

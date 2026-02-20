@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
+import { MoreVertical, LogOut, Target, Check } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 import { useGameStore } from '@/stores/gameStore';
 import { usePlayerStore } from '@/stores/playerStore';
@@ -120,9 +121,10 @@ export default function GameView() {
   }, [socket, setShowRoundResults]);
 
   const handleBackToLobby = useCallback(() => {
-    clearGameState();
-    setGameStarted(false);
-  }, [clearGameState, setGameStarted]);
+    // Server resets room state (gameStarted=false, isReady=false) and
+    // broadcasts room:returnedToLobby to all clients in the room.
+    socket.emit('game:returnToLobby');
+  }, [socket]);
 
   const handleLeaveGame = useCallback(() => {
     socket.emit('game:leave');
@@ -243,7 +245,7 @@ export default function GameView() {
           setShowLeaveMenu(!showLeaveMenu);
         }}
       >
-        <span className="text-lg text-text-muted">⋮</span>
+        <MoreVertical size={20} style={{ color: 'var(--text-muted)' }} />
       </button>
 
       {/* Leave menu dropdown */}
@@ -262,14 +264,14 @@ export default function GameView() {
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              className="w-full px-4 py-3 text-sm font-bold text-left hover:bg-white/5 transition-colors"
+              className="w-full px-4 py-3 text-sm font-bold text-left hover:bg-white/5 transition-colors flex items-center gap-2"
               style={{ color: 'var(--accent-red)' }}
               onClick={() => {
                 setShowLeaveMenu(false);
                 setShowLeaveConfirm(true);
               }}
             >
-              🚪 Quitter la partie
+              <LogOut size={15} /> Quitter la partie
             </button>
           </motion.div>
         )}
@@ -426,41 +428,78 @@ export default function GameView() {
       {/* Bottom section: betting / hand / mission action */}
       <div className="px-3 pb-4 pt-1">
         {/* Bet tracker */}
-        <AnimatePresence>
-          {showBetTracker && me && (
-            <motion.div
-              className="flex items-center justify-center gap-3 mb-2"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
+        {me && phase !== 'ROUND_START' && phase !== 'GAME_OVER' && (
+          <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
+            {/* Pili count — always visible */}
+            <div
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold"
+              style={{
+                background: 'rgba(61,31,31,0.8)',
+                border: '1px solid rgba(92,51,51,0.5)',
+              }}
             >
-              <div
-                className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-[11px] font-bold"
-                style={{
-                  background: 'rgba(61,31,31,0.8)',
-                  border: '1px solid rgba(92,51,51,0.5)',
-                }}
-              >
-                <span style={{ color: 'var(--accent-gold)' }}>
-                  🎯 Pari : {me.bet}
-                </span>
-                <span
-                  className="w-px h-3"
-                  style={{ background: 'rgba(92,51,51,0.6)' }}
-                />
-                <span style={{
-                  color: me.tricksWon === me.bet
-                    ? '#588157'
-                    : me.tricksWon > me.bet!
-                      ? 'var(--accent-red)'
-                      : 'var(--text-secondary)',
-                }}>
-                  ✓ Plis : {me.tricksWon}/{totalTricks}
-                </span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <span className="text-pili">🌶️</span>
+              <span style={{ color: 'var(--text-secondary)' }}>
+                {me.pilis} pili{me.pilis !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            {/* Bet + tricks tracker — visible once bet is placed */}
+            <AnimatePresence>
+              {showBetTracker && (
+                <motion.div
+                  className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-[11px] font-bold"
+                  style={{
+                    background: 'rgba(61,31,31,0.8)',
+                    border: '1px solid rgba(92,51,51,0.5)',
+                  }}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                >
+                  <span style={{ color: 'var(--accent-gold)' }} className="flex items-center gap-1">
+                    <Target size={12} /> Pari : {me.bet}
+                  </span>
+                  <span
+                    className="w-px h-3"
+                    style={{ background: 'rgba(92,51,51,0.6)' }}
+                  />
+                  <span
+                    className="flex items-center gap-1"
+                    style={{
+                      color: me.tricksWon === me.bet
+                        ? '#588157'
+                        : me.tricksWon > me.bet!
+                          ? 'var(--accent-red)'
+                          : 'var(--text-secondary)',
+                    }}
+                  >
+                    <Check size={12} /> Plis : {me.tricksWon}/{totalTricks}
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* My victim designation badge */}
+            {me.designatedVictimId && (() => {
+              const victim = players.find(p => p.id === me.designatedVictimId);
+              return victim ? (
+                <div
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold"
+                  style={{
+                    background: 'rgba(193,18,31,0.15)',
+                    border: '1px solid rgba(193,18,31,0.4)',
+                  }}
+                >
+                  <span className="flex items-center gap-0.5">
+                    →<Target size={12} />
+                  </span>
+                  <span style={{ color: 'var(--accent-red)' }}>{victim.name}</span>
+                </div>
+              ) : null;
+            })()}
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
           {/* Mission action (card pass, victim, joker) */}
@@ -489,8 +528,8 @@ export default function GameView() {
             />
           )}
 
-          {/* Player hand (visible during betting and trick play) */}
-          {phase !== 'ROUND_START' && phase !== 'GAME_OVER' && myHand.length > 0 && !(missionAction?.type === 'CHOOSE_JOKER_VALUE') && (
+          {/* Player hand (visible during betting and trick play, hidden when any mission action is required) */}
+          {phase !== 'ROUND_START' && phase !== 'GAME_OVER' && myHand.length > 0 && !missionAction && (
             <PlayerHand
               key="hand"
               cards={myHand}

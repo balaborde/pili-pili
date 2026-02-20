@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Bot, Sprout, Flame, Skull, ChevronDown, Check } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 import { useGameSocket } from '@/hooks/useGameSocket';
 import { usePlayerStore } from '@/stores/playerStore';
@@ -23,10 +24,16 @@ const SEAT_COLORS = [
   { bg: 'rgba(244,162,97,0.15)', border: '#ffb380', text: '#ffb380' },
 ];
 
-const BOT_LABELS: Record<BotDifficulty, { label: string; emoji: string }> = {
-  easy: { label: 'Facile', emoji: '🌱' },
-  medium: { label: 'Moyen', emoji: '🔥' },
-  hard: { label: 'Expert', emoji: '💀' },
+const BOT_LABELS: Record<BotDifficulty, string> = {
+  easy: 'Facile',
+  medium: 'Moyen',
+  hard: 'Expert',
+};
+
+const getBotIcon = (diff: BotDifficulty, size: number = 14) => {
+  if (diff === 'easy') return <Sprout size={size} />;
+  if (diff === 'hard') return <Skull size={size} />;
+  return <Flame size={size} />;
 };
 
 export default function RoomPage() {
@@ -100,6 +107,18 @@ export default function RoomPage() {
       alert(message); // Simple alert for now
     };
 
+    const onReturnedToLobby = ({ roomState }: { roomState: import('@/types/game.types').RoomState }) => {
+      const { setRoom } = useRoomStore.getState();
+      const { clearGameState } = useGameStore.getState();
+      setRoom(roomState);
+      clearGameState();
+    };
+
+    const onHostChanged = ({ newHostId }: { newHostId: string }) => {
+      const { setHostId } = useRoomStore.getState();
+      setHostId(newHostId);
+    };
+
     socket.on('room:playerJoined', onPlayerJoined);
     socket.on('room:playerLeft', onPlayerLeft);
     socket.on('room:botAdded', onBotAdded);
@@ -107,6 +126,8 @@ export default function RoomPage() {
     socket.on('room:readyChanged', onReadyChanged);
     socket.on('room:settingsUpdated', onSettingsUpdated);
     socket.on('room:error', onRoomError);
+    socket.on('room:returnedToLobby', onReturnedToLobby);
+    socket.on('room:hostChanged', onHostChanged);
 
     return () => {
       socket.off('room:playerJoined', onPlayerJoined);
@@ -116,6 +137,8 @@ export default function RoomPage() {
       socket.off('room:readyChanged', onReadyChanged);
       socket.off('room:settingsUpdated', onSettingsUpdated);
       socket.off('room:error', onRoomError);
+      socket.off('room:returnedToLobby', onReturnedToLobby);
+      socket.off('room:hostChanged', onHostChanged);
     };
   }, [socket]);
 
@@ -354,7 +377,7 @@ export default function RoomPage() {
                             color: color.text,
                           }}
                         >
-                          {player.isBot ? '🤖' : player.name.charAt(0).toUpperCase()}
+                          {player.isBot ? <Bot size={14} /> : player.name.charAt(0).toUpperCase()}
                         </div>
 
                         {/* Name */}
@@ -380,8 +403,8 @@ export default function RoomPage() {
                             )}
                           </div>
                           {player.isBot && (
-                            <span className="text-[10px] text-text-muted">
-                              Bot {player.name.includes('Facile') ? '🌱' : player.name.includes('Difficile') ? '💀' : '🔥'}
+                            <span className="text-[10px] text-text-muted flex items-center gap-1">
+                              Bot {player.name.includes('Facile') ? <Sprout size={10} /> : player.name.includes('Expert') ? <Skull size={10} /> : <Flame size={10} />}
                             </span>
                           )}
                         </div>
@@ -409,7 +432,9 @@ export default function RoomPage() {
                               border: `1px solid ${player.isReady ? 'rgba(88,129,87,0.3)' : 'transparent'}`,
                             }}
                           >
-                            {player.isReady ? 'Prêt ✓' : 'En attente...'}
+                            {player.isReady ? (
+                              <span className="flex items-center gap-1">Prêt <Check size={11} /></span>
+                            ) : 'En attente...'}
                           </span>
                         )}
                       </div>
@@ -463,8 +488,8 @@ export default function RoomPage() {
                     }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    <span>{BOT_LABELS[diff].emoji}</span>
-                    <span>{BOT_LABELS[diff].label}</span>
+                    {getBotIcon(diff)}
+                    <span>{BOT_LABELS[diff]}</span>
                   </motion.button>
                 ))}
               </div>
@@ -497,7 +522,7 @@ export default function RoomPage() {
             transition={{ duration: 0.2 }}
             className="text-text-muted"
           >
-            ▾
+            <ChevronDown size={14} />
           </motion.span>
         </motion.button>
 

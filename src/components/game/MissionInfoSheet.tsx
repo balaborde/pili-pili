@@ -1,6 +1,8 @@
 'use client';
 
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronDown, Layers } from 'lucide-react';
+import MissionIcon from './MissionIcon';
 import type { MissionInfo } from '@/types/game.types';
 
 interface MissionInfoSheetProps {
@@ -26,7 +28,7 @@ export default function MissionInfoSheet({
         whileTap={{ scale: 0.99 }}
       >
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-sm">{mission.icon}</span>
+          <MissionIcon name={mission.icon} size={18} style={{ color: 'var(--text-secondary)' }} />
           <span className="text-[11px] font-bold text-text-secondary truncate">
             {mission.name}
           </span>
@@ -43,11 +45,11 @@ export default function MissionInfoSheet({
           )}
         </div>
         <motion.span
-          className="text-[10px] text-text-muted shrink-0 ml-2"
+          className="text-text-muted shrink-0 ml-2"
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          ▾
+          <ChevronDown size={14} />
         </motion.span>
       </motion.button>
 
@@ -73,8 +75,9 @@ export default function MissionInfoSheet({
               <div className="flex items-center gap-3 mt-2 pt-2"
                 style={{ borderTop: '1px solid rgba(92,51,51,0.3)' }}
               >
-                <span className="text-[10px] text-text-muted">
-                  🃏 {mission.cardsPerPlayer} carte{mission.cardsPerPlayer > 1 ? 's' : ''}
+                <span className="text-[10px] text-text-muted flex items-center gap-1">
+                  <Layers size={11} />
+                  {mission.cardsPerPlayer} carte{mission.cardsPerPlayer > 1 ? 's' : ''}
                 </span>
               </div>
             </div>

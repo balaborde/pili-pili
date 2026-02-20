@@ -40,6 +40,7 @@ interface GamePlayer {
   pilis: number;
 
   designatedVictimId?: string;
+  missionPilisThisRound: number;
   missionActionDone: boolean;
   hasAcknowledged: boolean;
 }
@@ -84,6 +85,9 @@ export class Game {
   private allHandsVisible = false;
   private dealtAfterBetting = false;
 
+  // Buffered card passes — applied all at once when all players have acted
+  private pendingCardPasses = new Map<string, { recipientId: string; cards: Card[] }>();
+
   // Phase acknowledgment
   private acknowledgedPlayers = new Set<string>();
 
@@ -91,6 +95,7 @@ export class Game {
   private botTimers: ReturnType<typeof setTimeout>[] = [];
   private phaseTimer: ReturnType<typeof setTimeout> | null = null;
   private destroyed = false;
+  private lastRoundResults: PlayerRoundResult[] | null = null;
 
   constructor(roomPlayers: RoomPlayer[], settings: RoomSettings, callbacks: GameCallbacks) {
     this.settings = settings;
@@ -108,6 +113,7 @@ export class Game {
       bet: null,
       tricksWon: 0,
       pilis: 0,
+      missionPilisThisRound: 0,
       missionActionDone: false,
       hasAcknowledged: false,
     }));
@@ -274,13 +280,14 @@ export class Game {
         : (myIndex - 1 + active.length) % active.length;
       const recipient = active[recipientIndex];
 
-      // Remove cards from sender, add to recipient
+      // Remove cards from sender immediately (they see their hand shrink)
       for (const card of cards) {
         const idx = player.hand.findIndex(c => c.id === card.id);
         if (idx !== -1) player.hand.splice(idx, 1);
       }
-      recipient.hand.push(...cards);
-      recipient.hand.sort((a, b) => a.value - b.value);
+      // Buffer the pass — cards are given to the recipient only once everyone has acted,
+      // so no player sees received cards before making their own choice.
+      this.pendingCardPasses.set(playerId, { recipientId: recipient.id, cards });
 
       player.missionActionDone = true;
     } else if (action.type === 'DESIGNATE_VICTIM') {
@@ -417,6 +424,7 @@ export class Game {
       p.hand = [];
       p.bet = null;
       p.tricksWon = 0;
+      p.missionPilisThisRound = 0;
       p.missionActionDone = false;
       p.hasAcknowledged = false;
       p.designatedVictimId = undefined;
@@ -428,6 +436,8 @@ export class Game {
     this.isSimultaneous = false;
     this.simultaneousPlayed.clear();
     this.acknowledgedPlayers.clear();
+    this.pendingCardPasses.clear();
+    this.lastRoundResults = null;
 
     // Pick next mission
     if (this.missionQueue.length === 0) {
@@ -605,6 +615,17 @@ export class Game {
   private finishPostBetting(): void {
     if (this.destroyed) return;
 
+    // Apply all buffered card passes simultaneously so no one sees received
+    // cards before they've had a chance to make their own choice.
+    for (const [, pass] of this.pendingCardPasses) {
+      const recipient = this.getPlayer(pass.recipientId);
+      if (recipient) {
+        recipient.hand.push(...pass.cards);
+        recipient.hand.sort((a, b) => a.value - b.value);
+      }
+    }
+    this.pendingCardPasses.clear();
+
     // Disable forehead after post-betting is done
     this.foreheadActive = false;
 
@@ -679,7 +700,10 @@ export class Game {
       if (modifier.extraPilis) {
         for (const ep of modifier.extraPilis) {
           const p = this.getPlayer(ep.playerId);
-          if (p) p.pilis += ep.amount;
+          if (p) {
+            p.pilis += ep.amount;
+            p.missionPilisThisRound += ep.amount;
+          }
         }
       }
     }
@@ -714,7 +738,7 @@ export class Game {
     const active = this.getActivePlayers();
     const results: PlayerRoundResult[] = [];
 
-    // Calculate base pilis
+    // Calculate base pilis (gap from bet/tricks ecart)
     for (const p of active) {
       const gap = Math.abs((p.bet ?? 0) - p.tricksWon);
       results.push({
@@ -724,6 +748,7 @@ export class Game {
         tricksWon: p.tricksWon,
         gap,
         pilisGained: gap,
+        missionPilis: p.missionPilisThisRound, // trick-time pilis already applied to player.pilis
         pilisRemoved: 0,
         totalPilis: 0,
         isEliminated: false,
@@ -741,14 +766,17 @@ export class Game {
       }
     }
 
-    // Expert 9: victim designation
+    // Expert 9: victim designation — snapshot victim gap only (not trick pilis)
+    // to avoid transitive chaining (A→B, B→C: A should not inherit C's pilis).
     if (this.currentMission.id === 109) {
+      const victimGapMap = new Map<string, number>(results.map(r => [r.playerId, r.gap]));
       for (const p of active) {
         if (p.designatedVictimId) {
-          const victimResult = results.find(r => r.playerId === p.designatedVictimId);
           const myResult = results.find(r => r.playerId === p.id);
-          if (victimResult && myResult) {
-            myResult.pilisGained += victimResult.pilisGained;
+          if (myResult) {
+            const bonus = victimGapMap.get(p.designatedVictimId) ?? 0;
+            myResult.missionPilis += bonus; // display
+            myResult.pilisGained += bonus;  // application
           }
         }
       }
@@ -764,6 +792,7 @@ export class Game {
       if (r.isEliminated) player.isEliminated = true;
     }
 
+    this.lastRoundResults = results;
     this.callbacks.emitToAll('game:roundResults', { results });
     this.broadcastState();
 
@@ -805,6 +834,7 @@ export class Game {
         tricksWon: p.tricksWon,
         gap: 0,
         pilisGained: 0,
+        missionPilis: 0,
         pilisRemoved: 0,
         totalPilis: p.pilis,
         isEliminated: p.isEliminated,
@@ -893,6 +923,13 @@ export class Game {
 
     const validBets = this.getValidBets(player);
     if (validBets.length === 0) { this.placeBet(player.id, 0); return; }
+
+    // Forehead mode: bot can't see its own cards — bet randomly like a human would
+    if (this.foreheadActive) {
+      const bet = validBets[Math.floor(Math.random() * validBets.length)];
+      this.placeBet(player.id, bet);
+      return;
+    }
 
     let bet: number;
     switch (player.botDifficulty) {
@@ -1101,6 +1138,22 @@ export class Game {
     return (player.bet ?? 0) - player.tricksWon;
   }
 
+  /**
+   * Adjusted tricks-needed for medium/hard bots, factoring in mission penalties.
+   * Mission 103: winning the first or last trick gives +1 pili → treat those tricks
+   * as if we already have enough (don't want to win).
+   */
+  private effectiveTricksNeeded(player: GamePlayer): number {
+    const need = this.tricksNeeded(player);
+    if (
+      this.currentMission.id === 103 &&
+      (this.trickNumber === 1 || this.trickNumber === this.cardsPerPlayer)
+    ) {
+      return Math.min(need, 0);
+    }
+    return need;
+  }
+
   /** Easy: basic intent-based play (old medium logic) */
   private botPlayEasy(player: GamePlayer, sorted: Card[]): Card {
     const need = this.tricksNeeded(player);
@@ -1118,7 +1171,7 @@ export class Game {
 
   /** Medium: considers position, tries not to over/under-shoot */
   private botPlayMedium(player: GamePlayer, sorted: Card[]): Card {
-    const need = this.tricksNeeded(player);
+    const need = this.effectiveTricksNeeded(player);
     const invert = !!this.currentMission.invertValues;
     const effectiveSorted = invert ? [...sorted].reverse() : sorted;
     // In inverted mode, "strong" = low value. effectiveSorted: weakest first → strongest last.
@@ -1162,7 +1215,7 @@ export class Game {
 
   /** Hard: advanced strategy with sabotage, position awareness, and joker tactics */
   private botPlayHard(player: GamePlayer, sorted: Card[]): Card {
-    const need = this.tricksNeeded(player);
+    const need = this.effectiveTricksNeeded(player);
     const tricksRemaining = this.cardsPerPlayer - this.trickNumber + 1;
     const invert = !!this.currentMission.invertValues;
     const totalPlayers = this.getActivePlayers().length;
@@ -1262,7 +1315,7 @@ export class Game {
 
   /** Choose joker value based on difficulty and game state */
   private botChooseJokerValue(player: GamePlayer): number {
-    const need = this.tricksNeeded(player);
+    const need = this.effectiveTricksNeeded(player);
     const tricksRemaining = this.cardsPerPlayer - this.trickNumber + 1;
 
     if (player.botDifficulty === 'hard') {
@@ -1379,8 +1432,6 @@ export class Game {
       }
     } else if (this.foreheadActive && this.currentMission.getVisibility) {
       visibleHands = this.currentMission.getVisibility(this.buildMissionContext(), forPlayerId);
-    } else if (this.currentMission.getVisibility && this.phase !== 'ROUND_START' && this.phase !== 'DEALING') {
-      visibleHands = this.currentMission.getVisibility(this.buildMissionContext(), forPlayerId);
     }
 
     // Betting constraint for last bettor
@@ -1417,21 +1468,12 @@ export class Game {
       missionAction = this.currentMission.getRequiredAction?.('postBetting', this.buildMissionContext(), forPlayerId) ?? null;
     }
 
-    // Build round results if available
-    let roundResults: PlayerRoundResult[] | null = null;
-    if (this.phase === 'ROUND_END' || this.phase === 'GAME_OVER') {
-      roundResults = this.players.map(p => ({
-        playerId: p.id,
-        playerName: p.name,
-        bet: p.bet ?? 0,
-        tricksWon: p.tricksWon,
-        gap: Math.abs((p.bet ?? 0) - p.tricksWon),
-        pilisGained: Math.abs((p.bet ?? 0) - p.tricksWon),
-        pilisRemoved: 0,
-        totalPilis: p.pilis,
-        isEliminated: p.isEliminated,
-      }));
-    }
+    // Build round results if available — use the cached results from endRound()
+    // which contain the correct missionPilis, pilisRemoved, and designation bonuses.
+    const roundResults: PlayerRoundResult[] | null =
+      (this.phase === 'ROUND_END' || this.phase === 'GAME_OVER')
+        ? this.lastRoundResults
+        : null;
 
     // Final standings
     let finalStandings: PlayerRoundResult[] | null = null;
@@ -1445,6 +1487,7 @@ export class Game {
           tricksWon: p.tricksWon,
           gap: 0,
           pilisGained: 0,
+          missionPilis: 0,
           pilisRemoved: 0,
           totalPilis: p.pilis,
           isEliminated: p.isEliminated,
@@ -1481,6 +1524,7 @@ export class Game {
           : this.turnOrder[this.currentTurnIndex] === p.id,
         isEliminated: p.isEliminated,
         isConnected: p.isConnected,
+        designatedVictimId: p.designatedVictimId,
       })),
 
       myHand: this.foreheadActive

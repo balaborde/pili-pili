@@ -5,7 +5,7 @@ const mission1: Mission = {
   name: 'Échange horaire',
   description: 'Après les paris, donnez 2 cartes au joueur à votre gauche.',
   difficulty: 'standard',
-  icon: '🔄',
+  icon: 'RotateCw',
   getCardsPerPlayer: () => 6,
   getRequiredAction: (phase) =>
     phase === 'postBetting' ? { type: 'CHOOSE_CARDS_TO_PASS', count: 2, direction: 'left' } : null,
@@ -16,7 +16,7 @@ const mission2: Mission = {
   name: 'Échange antihoraire',
   description: 'Après les paris, donnez 2 cartes au joueur à votre droite.',
   difficulty: 'standard',
-  icon: '🔃',
+  icon: 'RotateCcw',
   getCardsPerPlayer: () => 6,
   getRequiredAction: (phase) =>
     phase === 'postBetting' ? { type: 'CHOOSE_CARDS_TO_PASS', count: 2, direction: 'right' } : null,
@@ -27,7 +27,7 @@ const mission3: Mission = {
   name: 'Rotation complète',
   description: 'Après les paris, donnez toutes vos cartes au joueur suivant.',
   difficulty: 'standard',
-  icon: '🌀',
+  icon: 'RefreshCw',
   getCardsPerPlayer: () => 3,
   postBetting: () => ({ passEntireHand: true }),
 };
@@ -37,7 +37,7 @@ const mission4: Mission = {
   name: 'Jeu simultané',
   description: 'Tous les joueurs jouent leur carte en même temps !',
   difficulty: 'standard',
-  icon: '⚡',
+  icon: 'Zap',
   getCardsPerPlayer: () => 6,
   isSimultaneous: true,
 };
@@ -47,7 +47,7 @@ const mission5: Mission = {
   name: 'Paris interdit : 1',
   description: 'Impossible de parier 1.',
   difficulty: 'standard',
-  icon: '🚫',
+  icon: 'Ban',
   getCardsPerPlayer: () => 5,
   getBettingConstraints: () => ({ forbiddenValues: [1] }),
 };
@@ -57,7 +57,7 @@ const mission6: Mission = {
   name: 'Paris interdit : 0',
   description: 'Impossible de parier 0.',
   difficulty: 'standard',
-  icon: '🚫',
+  icon: 'Ban',
   getCardsPerPlayer: () => 4,
   getBettingConstraints: () => ({ forbiddenValues: [0] }),
 };
@@ -67,7 +67,7 @@ const mission7: Mission = {
   name: 'Pioche bonus',
   description: 'Après les paris, chaque joueur pioche 1 carte supplémentaire.',
   difficulty: 'standard',
-  icon: '🎴',
+  icon: 'PlusCircle',
   getCardsPerPlayer: () => 2,
   postBetting: () => ({ extraDraws: 1 }),
 };
@@ -77,7 +77,7 @@ const mission8: Mission = {
   name: 'Cartes sur le front',
   description: 'Placez votre carte sur le front : les autres la voient, pas vous !',
   difficulty: 'standard',
-  icon: '🤦',
+  icon: 'HatGlasses',
   getCardsPerPlayer: () => 1,
   preBetting: () => ({ foreheadCards: true }),
   getVisibility: (ctx, viewerId) => {
@@ -96,7 +96,7 @@ const mission9: Mission = {
   name: 'Cartes visibles',
   description: 'Après les paris, toutes les cartes sont jouées face visible.',
   difficulty: 'standard',
-  icon: '👁️',
+  icon: 'Eye',
   getCardsPerPlayer: () => 4,
   postBetting: () => ({ revealAllHands: true }),
 };
@@ -106,7 +106,7 @@ const mission10: Mission = {
   name: 'Paris aveugle',
   description: 'Pariez avant de voir vos cartes !',
   difficulty: 'standard',
-  icon: '🙈',
+  icon: 'EyeOff',
   getCardsPerPlayer: () => 3,
   preBetting: () => ({ blindBetting: true, dealAfterBetting: true }),
 };
@@ -116,7 +116,7 @@ const mission11: Mission = {
   name: 'Bonus réussite',
   description: 'Si votre pari est exact, retirez autant de pilis que la valeur de votre pari.',
   difficulty: 'standard',
-  icon: '🎯',
+  icon: 'Award',
   getCardsPerPlayer: () => 6,
   afterRound: (ctx) => {
     const removals = ctx.players

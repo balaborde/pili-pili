@@ -1,7 +1,7 @@
 import { Server as SocketServer } from 'socket.io';
 import type { Server as HttpServer } from 'http';
 import type { ClientToServerEvents, ServerToClientEvents } from '../../src/types/socket.types';
-import { registerLobbyHandlers } from './handlers/lobby.handler';
+import { registerLobbyHandlers, handlePostPlayerRemoval } from './handlers/lobby.handler';
 import { registerGameHandlers } from './handlers/game.handler';
 import { roomStore } from '../store/RoomStore';
 import { gameStore } from '../store/GameStore';
@@ -35,13 +35,10 @@ export function createSocketServer(httpServer: HttpServer): SocketServer<ClientT
           // Lobby disconnection: remove player from room
           const room = roomStore.getRoom(info.roomCode);
           if (room) {
+            const wasHost = room.getHostId() === info.playerId;
             room.removePlayer(info.playerId);
             socket.to(info.roomCode).emit('room:playerLeft', { playerId: info.playerId });
-
-            // Clean up empty rooms
-            if (room.getPlayers().length === 0) {
-              roomStore.deleteRoom(info.roomCode);
-            }
+            handlePostPlayerRemoval(io, info.roomCode, room, wasHost);
           }
         }
 

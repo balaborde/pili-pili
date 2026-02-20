@@ -114,4 +114,30 @@ export function registerGameHandlers(io: AppServer, socket: AppSocket): void {
     roomStore.removeSocket(socket.id);
     socket.leave(info.roomCode);
   });
+
+  socket.on('game:returnToLobby', () => {
+    const info = roomStore.getPlayerBySocket(socket.id);
+    if (!info) return;
+
+    const room = roomStore.getRoom(info.roomCode);
+    if (!room) return;
+
+    const game = gameStore.getGame(info.roomCode);
+    if (game) {
+      game.destroy();
+      gameStore.removeGame(info.roomCode);
+    }
+
+    room.resetForLobby();
+
+    const roomState = {
+      code: room.roomCode,
+      hostId: room.getHostId()!,
+      players: room.getPlayers().map((p) => room.toClientPlayer(p)),
+      settings: room.getSettings(),
+      isGameStarted: false,
+    };
+
+    io.to(info.roomCode).emit('room:returnedToLobby', { roomState });
+  });
 }

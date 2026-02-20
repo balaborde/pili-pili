@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Bot, Target } from 'lucide-react';
 import type { Card, MissionActionRequest, ClientGamePlayer } from '@/types/game.types';
 import CardComponent from './CardComponent';
 
@@ -162,8 +163,8 @@ export default function MissionAction({
             boxShadow: '0 -8px 30px rgba(0,0,0,0.5)',
           }}
         >
-          <h3 className="text-sm font-black text-pili text-center mb-1">
-            Désigner une victime 🎯
+          <h3 className="text-sm font-black text-pili text-center mb-1 flex items-center justify-center gap-1.5">
+            Désigner une victime <Target size={15} />
           </h3>
           <p className="text-[10px] text-text-muted text-center mb-3">
             Vous recevrez aussi ses pilis en fin de manche
@@ -186,8 +187,8 @@ export default function MissionAction({
                 whileTap={{ scale: 0.98 }}
                 onClick={() => setSelectedVictimId(player.id)}
               >
-                <span className="text-sm">
-                  {player.isBot ? '🤖' : player.name.charAt(0).toUpperCase()}
+                <span className="text-sm flex items-center">
+                  {player.isBot ? <Bot size={16} /> : player.name.charAt(0).toUpperCase()}
                 </span>
                 <span className="text-sm font-bold text-foreground">{player.name}</span>
                 <span className="ml-auto text-xs text-text-muted">

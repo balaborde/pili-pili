@@ -32,6 +32,7 @@ export interface ClientToServerEvents {
   'game:chooseJokerValue': (data: { value: 0 | 56 }) => void;
   'game:acknowledgePhase': () => void;
   'game:leave': () => void;
+  'game:returnToLobby': () => void;
 }
 
 export interface ServerToClientEvents {
@@ -46,6 +47,7 @@ export interface ServerToClientEvents {
   'room:settingsUpdated': (data: RoomSettings) => void;
   'room:error': (data: { message: string }) => void;
   'room:gameStarted': () => void;
+  'room:hostChanged': (data: { newHostId: string }) => void;
 
   // Game
   'game:stateUpdate': (data: { gameState: ClientGameState }) => void;
@@ -56,4 +58,5 @@ export interface ServerToClientEvents {
   'game:error': (data: { message: string }) => void;
   'game:notification': (data: { message: string; type: 'info' | 'warning' | 'success' }) => void;
   'game:playerReplacedByBot': (data: { playerId: string; botId: string; botName: string }) => void;
+  'room:returnedToLobby': (data: { roomState: RoomState }) => void;
 }

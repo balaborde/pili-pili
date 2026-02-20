@@ -7,6 +7,35 @@ import { Game } from '../../Game';
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
+import { Room } from '../../Room';
+
+/**
+ * After a player has been removed from a room in the lobby:
+ * - If no humans remain, delete the room.
+ * - Otherwise, if the host changed, notify the room.
+ */
+export function handlePostPlayerRemoval(
+  io: AppServer,
+  roomCode: string,
+  room: Room,
+  removedWasHost: boolean,
+): void {
+  const remaining = room.getPlayers();
+  const hasHumans = remaining.some((p) => !p.isBot);
+
+  if (!hasHumans) {
+    roomStore.deleteRoom(roomCode);
+    return;
+  }
+
+  if (removedWasHost) {
+    const newHostId = room.getHostId();
+    if (newHostId) {
+      io.to(roomCode).emit('room:hostChanged', { newHostId });
+    }
+  }
+}
+
 const BOT_NAMES = [
   'Cayenne', 'Habanero', 'Jalapeño', 'Tabasco',
   'Sriracha', 'Chipotle', 'Paprika', 'Wasabi',
@@ -74,14 +103,12 @@ export function registerLobbyHandlers(io: AppServer, socket: AppSocket): void {
     const room = roomStore.getRoom(info.roomCode);
     if (!room) return;
 
+    const wasHost = room.getHostId() === info.playerId;
     room.removePlayer(info.playerId);
     socket.leave(info.roomCode);
 
     io.to(info.roomCode).emit('room:playerLeft', { playerId: info.playerId });
-
-    if (room.getPlayers().length === 0) {
-      roomStore.deleteRoom(info.roomCode);
-    }
+    handlePostPlayerRemoval(io, info.roomCode, room, wasHost);
   });
 
   socket.on('room:addBot', ({ difficulty }) => {

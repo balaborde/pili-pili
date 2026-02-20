@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { Trophy } from 'lucide-react';
 import type { TrickCard } from '@/types/game.types';
 
 interface TrickResultProps {
@@ -35,13 +36,13 @@ export default function TrickResult({
         exit={{ scale: 0.8, opacity: 0, y: -20 }}
         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       >
-        <motion.span
-          className="text-3xl block mb-1"
+        <motion.div
+          className="flex justify-center mb-1"
           animate={{ rotate: [0, 10, -10, 0] }}
           transition={{ duration: 0.5 }}
         >
-          🏆
-        </motion.span>
+          <Trophy size={32} style={{ color: 'var(--accent-gold)' }} />
+        </motion.div>
         <p className="text-sm font-black text-accent-green">
           {winnerName} remporte le pli !
         </p>

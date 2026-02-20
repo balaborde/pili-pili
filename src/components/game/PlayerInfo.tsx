@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import { Bot, X, Target, Check } from 'lucide-react';
 import type { ClientGamePlayer } from '@/types/game.types';
 
 interface PlayerInfoProps {
@@ -9,6 +10,8 @@ interface PlayerInfoProps {
   color: { bg: string; border: string; text: string };
   showBet: boolean;
   compact?: boolean;
+  victimOfNames?: string[];
+  designatedVictimName?: string;
 }
 
 const SEAT_COLORS = [
@@ -30,6 +33,8 @@ export default function PlayerInfo({
   color,
   showBet,
   compact = false,
+  victimOfNames,
+  designatedVictimName,
 }: PlayerInfoProps) {
   const isTurn = player.isCurrentTurn;
 
@@ -62,12 +67,12 @@ export default function PlayerInfo({
           boxShadow: isTurn ? `0 0 12px ${color.border}55` : 'none',
         }}
       >
-        {player.isBot ? '🤖' : player.name.charAt(0).toUpperCase()}
+        {player.isBot ? <Bot size={16} /> : player.name.charAt(0).toUpperCase()}
 
         {/* Eliminated X */}
         {player.isEliminated && (
-          <div className="absolute inset-0 flex items-center justify-center text-lg">
-            ❌
+          <div className="absolute inset-0 flex items-center justify-center">
+            <X size={18} style={{ color: 'var(--accent-red)' }} />
           </div>
         )}
       </div>
@@ -84,21 +89,23 @@ export default function PlayerInfo({
 
       {/* Stats row */}
       <div className="flex items-center gap-1.5">
-        {/* Cards in hand */}
-        <span
-          className="text-[9px] font-bold px-1 py-0.5 rounded"
-          style={{
-            background: 'rgba(61,31,31,0.8)',
-            color: 'var(--text-muted)',
-          }}
-        >
-          🃏{player.cardCount}
-        </span>
+        {/* Pili count */}
+        {player.pilis > 0 && (
+          <span
+            className="text-[9px] font-bold px-1 py-0.5 rounded"
+            style={{
+              background: 'rgba(61,31,31,0.8)',
+              color: 'var(--text-muted)',
+            }}
+          >
+            🌶️ {player.pilis}
+          </span>
+        )}
 
         {/* Bet badge */}
         {showBet && player.bet !== null && (
           <motion.span
-            className="text-[9px] font-black px-1.5 py-0.5 rounded"
+            className="flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded"
             style={{
               background: 'rgba(244,162,97,0.2)',
               color: 'var(--accent-gold)',
@@ -108,42 +115,59 @@ export default function PlayerInfo({
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 500 }}
           >
-            🎯{player.bet}
+            <Target size={8} />{player.bet}
           </motion.span>
         )}
 
         {/* Tricks won */}
         {player.tricksWon > 0 && (
           <span
-            className="text-[9px] font-bold px-1 py-0.5 rounded"
+            className="flex items-center gap-0.5 text-[9px] font-bold px-1 py-0.5 rounded"
             style={{
               background: 'rgba(88,129,87,0.2)',
               color: 'var(--accent-green)',
             }}
           >
-            ✓{player.tricksWon}
+            <Check size={9} />{player.tricksWon}
           </span>
         )}
       </div>
 
-      {/* Pili tokens */}
-      {player.pilis > 0 && (
-        <div className="flex gap-0.5 mt-0.5">
-          {Array.from({ length: Math.min(player.pilis, 8) }).map((_, i) => (
-            <motion.span
-              key={i}
-              className="text-[8px]"
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: i * 0.05, type: 'spring' }}
-            >
-              🌶️
-            </motion.span>
-          ))}
-          {player.pilis > 8 && (
-            <span className="text-[8px] text-pili font-bold">+{player.pilis - 8}</span>
-          )}
-        </div>
+      {/* Victim designation badges */}
+      {(victimOfNames && victimOfNames.length > 0) && (
+        <motion.div
+          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full mt-0.5"
+          style={{
+            background: 'rgba(193,18,31,0.15)',
+            border: '1px solid rgba(193,18,31,0.4)',
+          }}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 500 }}
+        >
+          <Target size={9} style={{ color: 'var(--accent-red)' }} />
+          <span className="text-[8px] font-bold" style={{ color: 'var(--accent-red)' }}>
+            {victimOfNames.join(', ')}
+          </span>
+        </motion.div>
+      )}
+      {designatedVictimName && (
+        <motion.div
+          className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full mt-0.5"
+          style={{
+            background: 'rgba(244,162,97,0.1)',
+            border: '1px solid rgba(244,162,97,0.25)',
+          }}
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 500 }}
+        >
+          <span className="text-[8px]">→</span>
+          <Target size={9} style={{ color: 'var(--accent-gold)' }} />
+          <span className="text-[8px] font-bold" style={{ color: 'var(--accent-gold)' }}>
+            {designatedVictimName}
+          </span>
+        </motion.div>
       )}
     </motion.div>
   );

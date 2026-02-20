@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { AlertTriangle } from 'lucide-react';
 
 interface BettingPanelProps {
   totalTricks: number;
@@ -74,8 +75,9 @@ export default function BettingPanel({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <p className="text-[10px] text-accent-red font-bold">
-              ⚠️ Somme actuelle : {bettingConstraint.sumSoFar} —
+            <p className="text-[10px] text-accent-red font-bold flex items-center justify-center gap-1">
+              <AlertTriangle size={11} />
+              Somme actuelle : {bettingConstraint.sumSoFar} —
               {bettingConstraint.forbiddenBet !== null
                 ? ` Le pari ${bettingConstraint.forbiddenBet} est interdit`
                 : ' Pas de restriction'}

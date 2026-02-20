@@ -98,7 +98,8 @@ export interface PlayerRoundResult {
   bet: number;
   tricksWon: number;
   gap: number;
-  pilisGained: number;
+  pilisGained: number;  // gap + victim designation (applied at endRound)
+  missionPilis: number; // trick-time + designation bonus (display only)
   pilisRemoved: number;
   totalPilis: number;
   isEliminated: boolean;
@@ -137,6 +138,7 @@ export interface ClientGamePlayer {
   isCurrentTurn: boolean;
   isEliminated: boolean;
   isConnected: boolean;
+  designatedVictimId?: string;
 }
 
 // ============================================================
