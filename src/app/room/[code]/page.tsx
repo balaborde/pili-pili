@@ -144,7 +144,7 @@ export default function RoomPage() {
 
   if (!room) {
     return (
-      <div className="min-h-dvh flex items-center justify-center">
+      <main className="min-h-dvh flex items-center justify-center">
         <motion.div
           className="flex flex-col items-center gap-3"
           initial={{ opacity: 0 }}
@@ -159,7 +159,7 @@ export default function RoomPage() {
           </motion.span>
           <p className="text-text-muted font-medium">Chargement...</p>
         </motion.div>
-      </div>
+      </main>
     );
   }
 
@@ -215,7 +215,7 @@ export default function RoomPage() {
   };
 
   return (
-    <div className="min-h-dvh relative overflow-hidden flex flex-col items-center px-5 py-8">
+    <main className="min-h-dvh relative overflow-hidden flex flex-col items-center px-5 py-8">
       {/* ── Background ── */}
       <div
         className="fixed inset-0 -z-10"
@@ -263,7 +263,7 @@ export default function RoomPage() {
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
         >
-          <span className="text-xs text-text-muted font-medium uppercase tracking-wider">Room</span>
+          <span className="text-xs text-text-secondary font-medium uppercase tracking-wider">Room</span>
           <span
             className="font-bold text-3xl tracking-[0.3em] text-accent-gold px-4 py-1.5 rounded-xl relative"
             style={{
@@ -313,7 +313,7 @@ export default function RoomPage() {
         {/* Panel glow */}
         <div
           className="absolute -inset-px rounded-2xl -z-10 opacity-30 blur-sm"
-          style={{ background: 'linear-gradient(135deg, var(--accent-red), var(--accent-orange))' }}
+          style={{ background: 'var(--accent-red)' }}
         />
 
         <div
@@ -546,7 +546,7 @@ export default function RoomPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-bold text-foreground">Limite de pilis 🌶️</p>
-                    <p className="text-[10px] text-text-muted">Pilis avant élimination</p>
+                    <p className="text-[10px] text-text-secondary">Pilis avant élimination</p>
                   </div>
                   {isHost ? (
                     <div className="flex items-center gap-1.5">
@@ -576,7 +576,7 @@ export default function RoomPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-bold text-foreground">Timer par tour</p>
-                    <p className="text-[10px] text-text-muted">Secondes par action</p>
+                    <p className="text-[10px] text-text-secondary">Secondes par action</p>
                   </div>
                   {isHost ? (
                     <div className="flex items-center gap-1.5">
@@ -605,12 +605,15 @@ export default function RoomPage() {
                 {/* Expert Missions */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-bold text-foreground">Missions expert</p>
-                    <p className="text-[10px] text-text-muted">Missions plus complexes</p>
+                    <p id="label-expert-missions" className="text-xs font-bold text-foreground">Missions expert</p>
+                    <p className="text-[10px] text-text-secondary">Missions plus complexes</p>
                   </div>
                   {isHost ? (
                     <motion.button
                       onClick={() => handleUpdateSettings({ includeExpertMissions: !room.settings.includeExpertMissions })}
+                      role="switch"
+                      aria-checked={room.settings.includeExpertMissions}
+                      aria-labelledby="label-expert-missions"
                       className="relative w-11 h-6 rounded-full cursor-pointer transition-colors"
                       style={{
                         background: room.settings.includeExpertMissions ? 'rgba(88,129,87,0.4)' : 'rgba(26,10,10,0.6)',
@@ -665,17 +668,6 @@ export default function RoomPage() {
             whileHover={canStart ? { scale: 1.02 } : undefined}
             whileTap={canStart ? { scale: 0.97 } : undefined}
           >
-            {canStart && (
-              <motion.div
-                className="absolute inset-0 opacity-20"
-                style={{
-                  background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)',
-                  backgroundSize: '200% 100%',
-                }}
-                animate={{ backgroundPosition: ['200% 0', '-200% 0'] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-              />
-            )}
             <span className="relative">
               {canStart ? '🌶️ Lancer la partie !' : 'Lancer la partie'}
             </span>
@@ -685,13 +677,13 @@ export default function RoomPage() {
         {/* Leave */}
         <motion.button
           onClick={handleLeave}
-          className="w-full text-sm py-2.5 text-text-muted hover:text-accent-red font-medium transition-colors cursor-pointer"
+          className="w-full text-sm py-2.5 text-text-secondary hover:text-accent-red font-medium transition-colors cursor-pointer"
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
         >
           Quitter la room
         </motion.button>
       </motion.div>
-    </div>
+    </main>
   );
 }

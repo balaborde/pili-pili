@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { MoreVertical, LogOut, Target, Check } from 'lucide-react';
+import { LogOut, Target, Check } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 import { useGameStore } from '@/stores/gameStore';
 import { usePlayerStore } from '@/stores/playerStore';
@@ -46,7 +46,6 @@ export default function GameView() {
 
   const [showMissionReveal, setShowMissionReveal] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [showLeaveMenu, setShowLeaveMenu] = useState(false);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const prevRoundRef = useRef(0);
 
@@ -86,13 +85,6 @@ export default function GameView() {
     return () => { socket.off('game:error', handler); };
   }, [socket]);
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    if (!showLeaveMenu) return;
-    const handleClick = () => setShowLeaveMenu(false);
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
-  }, [showLeaveMenu]);
 
   const handlePlayCard = useCallback((cardId: number) => {
     socket.emit('game:playCard', { cardId });
@@ -135,9 +127,9 @@ export default function GameView() {
 
   if (!gameState || !playerId) {
     return (
-      <div className="min-h-dvh flex items-center justify-center">
+      <main className="min-h-dvh flex items-center justify-center">
         <p className="text-text-muted font-medium">Chargement de la partie...</p>
-      </div>
+      </main>
     );
   }
 
@@ -204,7 +196,7 @@ export default function GameView() {
   const otherVisibleHands = Object.entries(visibleHands).filter(([pid]) => pid !== playerId);
 
   return (
-    <div className="min-h-dvh relative overflow-hidden flex flex-col">
+    <main className="min-h-dvh relative overflow-hidden flex flex-col">
       {/* Background */}
       <div
         className="fixed inset-0 -z-10"
@@ -235,47 +227,16 @@ export default function GameView() {
 
       {/* Leave game menu button */}
       <button
+        aria-label="Quitter la partie"
         className="fixed top-3 right-3 z-40 w-10 h-10 rounded-full flex items-center justify-center"
         style={{
           background: 'rgba(61,31,31,0.9)',
           border: '1px solid rgba(92,51,51,0.5)',
         }}
-        onClick={(e) => {
-          e.stopPropagation();
-          setShowLeaveMenu(!showLeaveMenu);
-        }}
+        onClick={() => setShowLeaveConfirm(true)}
       >
-        <MoreVertical size={20} style={{ color: 'var(--text-muted)' }} />
+        <LogOut size={18} style={{ color: 'var(--accent-red)' }} />
       </button>
-
-      {/* Leave menu dropdown */}
-      <AnimatePresence>
-        {showLeaveMenu && (
-          <motion.div
-            className="fixed top-16 right-3 z-40 rounded-xl overflow-hidden"
-            style={{
-              background: 'rgba(45,21,21,0.98)',
-              border: '1px solid rgba(92,51,51,0.5)',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
-            }}
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              className="w-full px-4 py-3 text-sm font-bold text-left hover:bg-white/5 transition-colors flex items-center gap-2"
-              style={{ color: 'var(--accent-red)' }}
-              onClick={() => {
-                setShowLeaveMenu(false);
-                setShowLeaveConfirm(true);
-              }}
-            >
-              <LogOut size={15} /> Quitter la partie
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Leave confirmation modal */}
       <AnimatePresence>
@@ -349,7 +310,7 @@ export default function GameView() {
             style={{
               background: 'rgba(61,31,31,0.8)',
               border: '1px solid rgba(92,51,51,0.5)',
-              color: 'var(--text-muted)',
+              color: 'var(--text-secondary)',
             }}
           >
             Manche {roundNumber}
@@ -438,7 +399,7 @@ export default function GameView() {
                 border: '1px solid rgba(92,51,51,0.5)',
               }}
             >
-              <span className="text-pili">🌶️</span>
+              <span className="text-pili" aria-hidden="true">🌶️</span>
               <span style={{ color: 'var(--text-secondary)' }}>
                 {me.pilis} pili{me.pilis !== 1 ? 's' : ''}
               </span>
@@ -588,6 +549,6 @@ export default function GameView() {
           />
         )}
       </AnimatePresence>
-    </div>
+    </main>
   );
 }

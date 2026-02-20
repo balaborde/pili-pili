@@ -156,7 +156,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-dvh relative overflow-hidden flex flex-col items-center justify-center px-5 py-10">
+    <main className="min-h-dvh relative overflow-hidden flex flex-col items-center justify-center px-5 py-10">
       {/* ── Layered background ── */}
       <div
         className="fixed inset-0 -z-10"
@@ -261,7 +261,7 @@ export default function HomePage() {
         {/* Panel glow */}
         <div
           className="absolute -inset-px rounded-2xl -z-10 opacity-40 blur-sm"
-          style={{ background: 'linear-gradient(135deg, var(--accent-red), var(--accent-orange), var(--accent-gold))' }}
+          style={{ background: 'var(--accent-red)' }}
         />
 
         <div
@@ -307,11 +307,12 @@ export default function HomePage() {
 
           {/* Name input */}
           <div className="mb-5 relative">
-            <label className="block text-xs font-semibold text-text-secondary mb-1.5 uppercase tracking-wider">
+            <label htmlFor="player-name" className="block text-xs font-semibold text-text-secondary mb-1.5 uppercase tracking-wider">
               Ton pseudo
             </label>
             <div className="relative group">
               <input
+                id="player-name"
                 type="text"
                 value={name}
                 onChange={(e) => {
@@ -410,11 +411,12 @@ export default function HomePage() {
                 className="space-y-3"
               >
                 <div className="relative">
-                  <label className="block text-xs font-semibold text-text-secondary mb-1.5 uppercase tracking-wider">
+                  <label htmlFor="join-code" className="block text-xs font-semibold text-text-secondary mb-1.5 uppercase tracking-wider">
                     Code de la room
                   </label>
                   <div className="relative group">
                     <input
+                      id="join-code"
                       type="text"
                       value={joinCode}
                       onChange={(e) => {
@@ -467,13 +469,13 @@ export default function HomePage() {
 
       {/* ── Footer ── */}
       <motion.p
-        className="mt-8 text-text-muted text-sm font-medium tracking-wide"
+        className="mt-8 text-text-secondary text-sm font-medium tracking-wide"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.6 }}
       >
         2–8 joueurs · Plis, paris &amp; missions
       </motion.p>
-    </div>
+    </main>
   );
 }

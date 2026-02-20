@@ -25,7 +25,7 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "PiliPili - Jeu de Cartes en Ligne",
+  title: { absolute: "PiliPili - Jeu de Cartes en Ligne" },
   description: "Jeu de plis avec paris et missions. Jouez en ligne avec vos amis ou contre l'IA !",
 };
 

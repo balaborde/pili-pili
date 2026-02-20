@@ -52,7 +52,7 @@ export default function PlayArea({
         style={{
           background: 'rgba(61,31,31,0.8)',
           border: '1px solid rgba(92,51,51,0.5)',
-          color: 'var(--text-muted)',
+          color: 'var(--text-secondary)',
         }}
       >
         {trickNumber > 0

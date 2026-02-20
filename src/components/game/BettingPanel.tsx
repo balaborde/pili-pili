@@ -99,7 +99,7 @@ export default function BettingPanel({
                 className="w-11 h-11 rounded-xl text-sm font-black flex items-center justify-center transition-all"
                 style={{
                   background: isSelected
-                    ? 'linear-gradient(135deg, var(--accent-red), var(--accent-orange))'
+                    ? '#c8182a'
                     : isForbidden
                     ? 'rgba(26,10,10,0.3)'
                     : 'rgba(26,10,10,0.6)',
