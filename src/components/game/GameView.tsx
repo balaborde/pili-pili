@@ -306,7 +306,7 @@ export default function GameView() {
         {/* Round badge */}
         <div className="flex items-center gap-2">
           <span
-            className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
+            className="text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-full"
             style={{
               background: 'rgba(61,31,31,0.8)',
               border: '1px solid rgba(92,51,51,0.5)',
@@ -341,7 +341,7 @@ export default function GameView() {
               const player = players.find(p => p.id === pid);
               return (
                 <div key={pid} className="flex flex-col items-center gap-1">
-                  <span className="text-[9px] font-bold text-text-muted">
+                  <span className="text-xs font-bold text-text-muted">
                     {player?.name ?? 'Joueur'}
                   </span>
                   <div className="flex gap-1">
@@ -368,7 +368,7 @@ export default function GameView() {
         {/* Status message */}
         {statusMessage && phase !== 'ROUND_START' && phase !== 'ROUND_END' && phase !== 'GAME_OVER' && (
           <div
-            className="text-[11px] font-bold px-4 py-1.5 rounded-full text-center"
+            className="text-xs font-bold px-4 py-1.5 rounded-full text-center"
             style={{
               background: (isMyTurnToPlay || isMyTurnToBet)
                 ? 'rgba(244,162,97,0.15)'
@@ -393,7 +393,7 @@ export default function GameView() {
           <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
             {/* Pili count — always visible */}
             <div
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
               style={{
                 background: 'rgba(61,31,31,0.8)',
                 border: '1px solid rgba(92,51,51,0.5)',
@@ -409,7 +409,7 @@ export default function GameView() {
             <AnimatePresence>
               {showBetTracker && (
                 <motion.div
-                  className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-[11px] font-bold"
+                  className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-full text-xs font-bold"
                   style={{
                     background: 'rgba(61,31,31,0.8)',
                     border: '1px solid rgba(92,51,51,0.5)',
@@ -446,7 +446,7 @@ export default function GameView() {
               const victim = players.find(p => p.id === me.designatedVictimId);
               return victim ? (
                 <div
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold"
                   style={{
                     background: 'rgba(193,18,31,0.15)',
                     border: '1px solid rgba(193,18,31,0.4)',

@@ -290,7 +290,7 @@ export default function RoomPage() {
               initial={{ opacity: 0, scale: 0.8, y: -2 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+              className={`text-xs font-bold px-2 py-0.5 rounded-md ${
                 copied
                   ? 'bg-accent-green/20 text-accent-green'
                   : 'bg-surface-hover/60 text-text-muted opacity-0 group-hover:opacity-100'
@@ -388,7 +388,7 @@ export default function RoomPage() {
                             </span>
                             {player.id === room.hostId && (
                               <span
-                                className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md shrink-0"
+                                className="text-xs font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md shrink-0"
                                 style={{
                                   background: 'rgba(244,162,97,0.15)',
                                   color: 'var(--accent-gold)',
@@ -399,12 +399,12 @@ export default function RoomPage() {
                               </span>
                             )}
                             {isMe && (
-                              <span className="text-[9px] text-text-muted font-medium shrink-0">(toi)</span>
+                              <span className="text-xs text-text-muted font-medium shrink-0">(toi)</span>
                             )}
                           </div>
                           {player.isBot && (
-                            <span className="text-[10px] text-text-muted flex items-center gap-1">
-                              Bot {player.name.includes('Facile') ? <Sprout size={10} /> : player.name.includes('Expert') ? <Skull size={10} /> : <Flame size={10} />}
+                            <span className="text-xs text-text-muted flex items-center gap-1">
+                              Bot {player.botDifficulty === 'easy' ? <Sprout size={10} /> : player.botDifficulty === 'hard' ? <Skull size={10} /> : <Flame size={10} />}
                             </span>
                           )}
                         </div>
@@ -425,7 +425,7 @@ export default function RoomPage() {
                           )
                         ) : (
                           <span
-                            className="text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all duration-300"
+                            className="text-xs font-bold px-2.5 py-1 rounded-lg transition-all duration-300"
                             style={{
                               background: player.isReady ? 'rgba(88,129,87,0.2)' : 'rgba(139,111,95,0.1)',
                               color: player.isReady ? 'var(--accent-green)' : 'var(--text-muted)',
@@ -467,7 +467,7 @@ export default function RoomPage() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              <p className="text-[10px] text-text-muted font-medium uppercase tracking-wider mb-2 text-center">
+              <p className="text-xs text-text-muted font-medium uppercase tracking-wider mb-2 text-center">
                 Ajouter un bot
               </p>
               <div className="flex gap-2">
@@ -546,7 +546,7 @@ export default function RoomPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-bold text-foreground">Limite de pilis 🌶️</p>
-                    <p className="text-[10px] text-text-secondary">Pilis avant élimination</p>
+                    <p className="text-xs text-text-secondary">Pilis avant élimination</p>
                   </div>
                   {isHost ? (
                     <div className="flex items-center gap-1.5">
@@ -576,7 +576,7 @@ export default function RoomPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-bold text-foreground">Timer par tour</p>
-                    <p className="text-[10px] text-text-secondary">Secondes par action</p>
+                    <p className="text-xs text-text-secondary">Secondes par action</p>
                   </div>
                   {isHost ? (
                     <div className="flex items-center gap-1.5">
@@ -606,7 +606,7 @@ export default function RoomPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p id="label-expert-missions" className="text-xs font-bold text-foreground">Missions expert</p>
-                    <p className="text-[10px] text-text-secondary">Missions plus complexes</p>
+                    <p className="text-xs text-text-secondary">Missions plus complexes</p>
                   </div>
                   {isHost ? (
                     <motion.button

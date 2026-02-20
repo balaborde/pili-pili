@@ -48,7 +48,7 @@ export default function PlayArea({
     <div className="relative flex flex-col items-center gap-3">
       {/* Trick counter */}
       <div
-        className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full"
+        className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full"
         style={{
           background: 'rgba(61,31,31,0.8)',
           border: '1px solid rgba(92,51,51,0.5)',
@@ -78,7 +78,7 @@ export default function PlayArea({
             transition={{ duration: 3, repeat: Infinity }}
           >
             <MissionIcon name={mission.icon} size={28} style={{ color: 'var(--text-muted)' }} />
-            <span className="text-[9px] font-bold text-text-muted uppercase tracking-wider">
+            <span className="text-xs font-bold text-text-muted uppercase tracking-wider">
               {isSimultaneous ? 'Simultané' : 'En attente'}
             </span>
           </motion.div>
@@ -106,7 +106,7 @@ export default function PlayArea({
                   <CardComponent card={tc.card} size="sm" />
                   {tc.card.isJoker && (
                     <span
-                      className="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-black px-1 rounded-full"
+                      className="absolute -top-2 left-1/2 -translate-x-1/2 text-xs font-black px-1 rounded-full"
                       style={{
                         background: '#c1121f',
                         color: '#fff',
@@ -118,7 +118,7 @@ export default function PlayArea({
                   )}
                 </div>
                 <span
-                  className="text-[8px] font-bold mt-0.5 px-1.5 py-0.5 rounded-md truncate max-w-16"
+                  className="text-[11px] font-bold mt-0.5 px-1.5 py-0.5 rounded-md truncate max-w-16"
                   style={{
                     background: 'rgba(26,10,10,0.8)',
                     color: 'var(--text-secondary)',

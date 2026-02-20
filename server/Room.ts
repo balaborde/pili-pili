@@ -117,6 +117,7 @@ export class Room {
       id: p.id,
       name: p.name,
       isBot: p.isBot,
+      botDifficulty: p.botDifficulty,
       isConnected: p.isConnected,
       isReady: p.isReady,
       cardCount: 0,

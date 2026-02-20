@@ -8,6 +8,7 @@ export interface ClientPlayer {
   id: string;
   name: string;
   isBot: boolean;
+  botDifficulty?: BotDifficulty;
   isConnected: boolean;
   isReady: boolean;
   cardCount: number;

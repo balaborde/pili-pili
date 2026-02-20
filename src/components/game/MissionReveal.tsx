@@ -48,7 +48,7 @@ export default function MissionReveal({
         <div className="p-6 text-center">
           {/* Round number */}
           <motion.p
-            className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2"
+            className="text-xs font-bold uppercase tracking-widest text-text-muted mb-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
@@ -85,7 +85,7 @@ export default function MissionReveal({
           {/* Difficulty badge */}
           {mission.difficulty === 'expert' && (
             <motion.span
-              className="inline-block text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md mb-3"
+              className="inline-block text-xs font-black uppercase tracking-wider px-2 py-0.5 rounded-md mb-3"
               style={{
                 background: 'rgba(193,18,31,0.2)',
                 color: 'var(--pili-token)',
@@ -128,7 +128,7 @@ export default function MissionReveal({
 
           {/* Tap hint */}
           <motion.p
-            className="text-[9px] text-text-muted mt-4"
+            className="text-xs text-text-muted mt-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: [0, 0.5, 0] }}
             transition={{ delay: 1, duration: 2, repeat: Infinity }}

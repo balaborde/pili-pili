@@ -50,7 +50,7 @@ export default function RoundResults({
         {/* Results table */}
         <div className="px-4 py-3">
           {/* Header row */}
-          <div className="flex items-center text-[9px] font-bold text-text-muted uppercase tracking-wider pb-2 mb-2"
+          <div className="flex items-center text-xs font-bold text-text-muted uppercase tracking-wider pb-2 mb-2"
             style={{ borderBottom: '1px solid rgba(92,51,51,0.3)' }}
           >
             <span className="flex-1">Joueur</span>
@@ -102,7 +102,7 @@ export default function RoundResults({
                     <div className="flex flex-wrap justify-center gap-0.5">
                       {r.gap > 0 && (
                         <motion.span
-                          className="text-[10px] font-black"
+                          className="text-xs font-black"
                           style={{ color: 'var(--accent-red)' }}
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
@@ -113,7 +113,7 @@ export default function RoundResults({
                       )}
                       {r.missionPilis > 0 && (
                         <motion.span
-                          className="text-[10px] font-black"
+                          className="text-xs font-black"
                           style={{ color: '#f4845f' }}
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
@@ -124,7 +124,7 @@ export default function RoundResults({
                       )}
                       {r.pilisRemoved > 0 && (
                         <motion.span
-                          className="text-[10px] font-black"
+                          className="text-xs font-black"
                           style={{ color: 'var(--accent-green)' }}
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}

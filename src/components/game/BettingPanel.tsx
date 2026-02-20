@@ -59,7 +59,7 @@ export default function BettingPanel({
           <h3 className="text-sm font-black text-accent-gold uppercase tracking-wider">
             Votre pari
           </h3>
-          <p className="text-[10px] text-text-muted mt-0.5">
+          <p className="text-xs text-text-muted mt-0.5">
             Combien de plis allez-vous remporter ?
           </p>
         </div>
@@ -75,7 +75,7 @@ export default function BettingPanel({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
           >
-            <p className="text-[10px] text-accent-red font-bold flex items-center justify-center gap-1">
+            <p className="text-xs text-accent-red font-bold flex items-center justify-center gap-1">
               <AlertTriangle size={11} />
               Somme actuelle : {bettingConstraint.sumSoFar} —
               {bettingConstraint.forbiddenBet !== null

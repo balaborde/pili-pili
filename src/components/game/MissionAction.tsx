@@ -62,7 +62,7 @@ export default function MissionAction({
               onClick={() => onChooseJokerValue(0)}
             >
               <span className="text-2xl font-black text-accent-green">0</span>
-              <p className="text-[10px] text-text-muted mt-1">Plus faible</p>
+              <p className="text-xs text-text-muted mt-1">Plus faible</p>
             </motion.button>
 
             <motion.button
@@ -76,7 +76,7 @@ export default function MissionAction({
               onClick={() => onChooseJokerValue(56)}
             >
               <span className="text-2xl font-black text-accent-red">56</span>
-              <p className="text-[10px] text-text-muted mt-1">Plus fort</p>
+              <p className="text-xs text-text-muted mt-1">Plus fort</p>
             </motion.button>
           </div>
         </motion.div>
@@ -115,7 +115,7 @@ export default function MissionAction({
           <h3 className="text-sm font-black text-accent-gold text-center mb-1">
             Choisir {action.count} carte{action.count > 1 ? 's' : ''} à donner {directionLabel}
           </h3>
-          <p className="text-[10px] text-text-muted text-center mb-3">
+          <p className="text-xs text-text-muted text-center mb-3">
             {selectedCardIds.size}/{action.count} sélectionnée{selectedCardIds.size > 1 ? 's' : ''}
           </p>
 
@@ -166,7 +166,7 @@ export default function MissionAction({
           <h3 className="text-sm font-black text-pili text-center mb-1 flex items-center justify-center gap-1.5">
             Désigner une victime <Target size={15} />
           </h3>
-          <p className="text-[10px] text-text-muted text-center mb-3">
+          <p className="text-xs text-text-muted text-center mb-3">
             Vous recevrez aussi ses pilis en fin de manche
           </p>
 

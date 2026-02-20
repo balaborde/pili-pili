@@ -79,7 +79,7 @@ export default function PlayerInfo({
 
       {/* Name */}
       <span
-        className={`text-[10px] font-bold truncate max-w-16 leading-tight ${
+        className={`text-xs font-bold truncate max-w-16 leading-tight ${
           isMe ? 'text-accent-gold' : 'text-foreground'
         }`}
         style={{ opacity: player.isEliminated ? 0.4 : 1 }}
@@ -92,7 +92,7 @@ export default function PlayerInfo({
         {/* Pili count */}
         {player.pilis > 0 && (
           <span
-            className="text-[9px] font-bold px-1 py-0.5 rounded"
+            className="text-xs font-bold px-1 py-0.5 rounded"
             style={{
               background: 'rgba(61,31,31,0.8)',
               color: 'var(--text-muted)',
@@ -105,7 +105,7 @@ export default function PlayerInfo({
         {/* Bet badge */}
         {showBet && player.bet !== null && (
           <motion.span
-            className="flex items-center gap-0.5 text-[9px] font-black px-1.5 py-0.5 rounded"
+            className="flex items-center gap-0.5 text-xs font-black px-1.5 py-0.5 rounded"
             style={{
               background: 'rgba(244,162,97,0.2)',
               color: 'var(--accent-gold)',
@@ -122,7 +122,7 @@ export default function PlayerInfo({
         {/* Tricks won */}
         {player.tricksWon > 0 && (
           <span
-            className="flex items-center gap-0.5 text-[9px] font-bold px-1 py-0.5 rounded"
+            className="flex items-center gap-0.5 text-xs font-bold px-1 py-0.5 rounded"
             style={{
               background: 'rgba(88,129,87,0.2)',
               color: 'var(--accent-green)',
@@ -146,7 +146,7 @@ export default function PlayerInfo({
           transition={{ type: 'spring', stiffness: 500 }}
         >
           <Target size={9} style={{ color: 'var(--accent-red)' }} />
-          <span className="text-[8px] font-bold" style={{ color: 'var(--accent-red)' }}>
+          <span className="text-[11px] font-bold" style={{ color: 'var(--accent-red)' }}>
             {victimOfNames.join(', ')}
           </span>
         </motion.div>
@@ -162,9 +162,9 @@ export default function PlayerInfo({
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 500 }}
         >
-          <span className="text-[8px]">→</span>
+          <span className="text-[11px]">→</span>
           <Target size={9} style={{ color: 'var(--accent-gold)' }} />
-          <span className="text-[8px] font-bold" style={{ color: 'var(--accent-gold)' }}>
+          <span className="text-[11px] font-bold" style={{ color: 'var(--accent-gold)' }}>
             {designatedVictimName}
           </span>
         </motion.div>

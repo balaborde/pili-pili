@@ -29,12 +29,12 @@ export default function MissionInfoSheet({
       >
         <div className="flex items-center gap-2 min-w-0">
           <MissionIcon name={mission.icon} size={18} style={{ color: 'var(--text-secondary)' }} />
-          <span className="text-[11px] font-bold text-text-secondary truncate">
+          <span className="text-xs font-bold text-text-secondary truncate">
             {mission.name}
           </span>
           {mission.difficulty === 'expert' && (
             <span
-              className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded shrink-0"
+              className="text-[11px] font-black uppercase px-1.5 py-0.5 rounded shrink-0"
               style={{
                 background: 'rgba(193,18,31,0.2)',
                 color: 'var(--pili-token)',
@@ -75,7 +75,7 @@ export default function MissionInfoSheet({
               <div className="flex items-center gap-3 mt-2 pt-2"
                 style={{ borderTop: '1px solid rgba(92,51,51,0.3)' }}
               >
-                <span className="text-[10px] text-text-muted flex items-center gap-1">
+                <span className="text-xs text-text-muted flex items-center gap-1">
                   <Layers size={11} />
                   {mission.cardsPerPlayer} carte{mission.cardsPerPlayer > 1 ? 's' : ''}
                 </span>
