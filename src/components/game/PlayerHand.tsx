@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Card } from '@/types/game.types';
 import CardComponent from './CardComponent';
+import { useI18n } from '@/i18n';
 
 interface PlayerHandProps {
   cards: Card[];
@@ -21,6 +22,7 @@ export default function PlayerHand({
   onPlayCard,
   disabled = false,
 }: PlayerHandProps) {
+  const { t } = useI18n();
   const count = cards.length;
   const maxSpread = Math.min(count * 38, 320);
 
@@ -46,7 +48,7 @@ export default function PlayerHand({
             className="btn-primary text-sm px-6 py-2"
             onClick={() => onPlayCard(selectedCardId)}
           >
-            Jouer cette carte
+            {t.playerHand.playCard}
           </motion.button>
         )}
       </AnimatePresence>
@@ -115,7 +117,7 @@ export default function PlayerHand({
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
-          Touchez une carte pour la jouer
+          {t.playerHand.tapHint}
         </motion.p>
       )}
     </div>

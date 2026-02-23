@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Layers } from 'lucide-react';
 import MissionIcon from './MissionIcon';
 import type { MissionInfo } from '@/types/game.types';
+import { useI18n } from '@/i18n';
 
 interface MissionRevealProps {
   mission: MissionInfo;
@@ -16,6 +17,7 @@ export default function MissionReveal({
   roundNumber,
   onDismiss,
 }: MissionRevealProps) {
+  const { t } = useI18n();
   return (
     <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center px-6"
@@ -53,7 +55,7 @@ export default function MissionReveal({
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            Manche {roundNumber}
+            {t.game.round(roundNumber)}
           </motion.p>
 
           {/* Icon */}
@@ -95,7 +97,7 @@ export default function MissionReveal({
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
-              Expert
+              {t.missionReveal.expert}
             </motion.span>
           )}
 
@@ -122,7 +124,7 @@ export default function MissionReveal({
           >
             <Layers size={20} style={{ color: 'var(--accent-gold)' }} />
             <span className="text-sm font-bold text-accent-gold">
-              {mission.cardsPerPlayer} carte{mission.cardsPerPlayer > 1 ? 's' : ''} / joueur
+              {t.missionReveal.cardPerPlayer(mission.cardsPerPlayer)}
             </span>
           </motion.div>
 
@@ -133,7 +135,7 @@ export default function MissionReveal({
             animate={{ opacity: [0, 0.5, 0] }}
             transition={{ delay: 1, duration: 2, repeat: Infinity }}
           >
-            Touchez pour continuer
+            {t.missionReveal.tapToContinue}
           </motion.p>
         </div>
       </motion.div>

@@ -3,9 +3,12 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { CircleHelp } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useRoomStore } from '@/stores/roomStore';
+import HowToPlayModal from '@/components/HowToPlayModal';
+import { useI18n, LocaleSwitcher } from '@/i18n';
 
 /* ── Floating decorative peppers ── */
 const PEPPERS = [
@@ -83,10 +86,12 @@ export default function HomePage() {
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const { t } = useI18n();
 
   const handleCreate = () => {
     if (!name.trim()) {
-      setError('Entre ton nom !');
+      setError(t.home.nameError);
       return;
     }
     setLoading(true);
@@ -131,11 +136,11 @@ export default function HomePage() {
 
   const handleJoin = () => {
     if (!name.trim()) {
-      setError('Entre ton nom !');
+      setError(t.home.nameError);
       return;
     }
     if (!joinCode.trim()) {
-      setError('Entre le code de la room !');
+      setError(t.home.roomCodeError);
       return;
     }
     setLoading(true);
@@ -157,6 +162,7 @@ export default function HomePage() {
 
   return (
     <main className="min-h-dvh relative overflow-hidden flex flex-col items-center justify-center px-5 py-10">
+      <LocaleSwitcher />
       {/* ── Layered background ── */}
       <div
         className="fixed inset-0 -z-10"
@@ -236,7 +242,7 @@ export default function HomePage() {
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6, duration: 0.5 }}
         >
-          Le jeu de plis qui pique&thinsp;!
+          {t.home.tagline}
         </motion.p>
 
         {/* Animated chili under title */}
@@ -308,7 +314,7 @@ export default function HomePage() {
           {/* Name input */}
           <div className="mb-5 relative">
             <label htmlFor="player-name" className="block text-xs font-semibold text-text-secondary mb-1.5 uppercase tracking-wider">
-              Ton pseudo
+              {t.home.nameLabel}
             </label>
             <div className="relative group">
               <input
@@ -319,7 +325,7 @@ export default function HomePage() {
                   setName(e.target.value);
                   setError('');
                 }}
-                placeholder="Cayenne"
+                placeholder={t.home.namePlaceholder}
                 maxLength={20}
                 className="w-full px-4 py-3 rounded-xl bg-(--bg-primary)/80 border-2 border-(--border)/60 text-foreground placeholder:text-(--text-muted)/60 focus:outline-none focus:border-accent-gold/70 transition-all duration-300 text-base font-medium"
                 style={{ boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)' }}
@@ -346,7 +352,7 @@ export default function HomePage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
                 >
-                  Créer une partie
+                  {t.home.createGame}
                 </motion.button>
                 <motion.button
                   onClick={() => setMode('join')}
@@ -354,7 +360,7 @@ export default function HomePage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
                 >
-                  Rejoindre une partie
+                  {t.home.joinGame}
                 </motion.button>
               </motion.div>
             )}
@@ -384,10 +390,10 @@ export default function HomePage() {
                       >
                         🌶️
                       </motion.span>
-                      Création...
+                      {t.home.creating}
                     </span>
                   ) : (
-                    'Lancer la room'
+                    t.home.launchRoom
                   )}
                 </motion.button>
                 <motion.button
@@ -396,7 +402,7 @@ export default function HomePage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
                 >
-                  Retour
+                  {t.home.back}
                 </motion.button>
               </motion.div>
             )}
@@ -412,7 +418,7 @@ export default function HomePage() {
               >
                 <div className="relative">
                   <label htmlFor="join-code" className="block text-xs font-semibold text-text-secondary mb-1.5 uppercase tracking-wider">
-                    Code de la room
+                    {t.home.roomCodeLabel}
                   </label>
                   <div className="relative group">
                     <input
@@ -447,10 +453,10 @@ export default function HomePage() {
                       >
                         🌶️
                       </motion.span>
-                      Connexion...
+                      {t.home.joining}
                     </span>
                   ) : (
-                    'Rejoindre'
+                    t.home.join
                   )}
                 </motion.button>
                 <motion.button
@@ -459,7 +465,7 @@ export default function HomePage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.97 }}
                 >
-                  Retour
+                  {t.home.back}
                 </motion.button>
               </motion.div>
             )}
@@ -467,15 +473,50 @@ export default function HomePage() {
         </div>
       </motion.div>
 
+      {/* ── How to play ── */}
+      <motion.button
+        className="mt-5 flex items-center gap-1.5 text-sm font-medium"
+        onClick={() => setShowHowToPlay(true)}
+        initial={{ opacity: 0 }}
+        animate={{
+          opacity: [1, 0.4, 1],
+          color: ['var(--text-secondary)', 'var(--accent-gold)', 'var(--text-secondary)'],
+        }}
+        transition={{
+          opacity: { delay: 0.9, duration: 1.8, repeat: Infinity, ease: 'easeInOut' },
+          color: { delay: 0.9, duration: 1.8, repeat: Infinity, ease: 'easeInOut' },
+        }}
+        whileHover={{ scale: 1.04, opacity: 1 }}
+        whileTap={{ scale: 0.97 }}
+      >
+        <CircleHelp size={16} />
+        {t.home.howToPlay}
+      </motion.button>
+
       {/* ── Footer ── */}
       <motion.p
-        className="mt-8 text-text-secondary text-sm font-medium tracking-wide"
+        className="mt-5 text-text-secondary text-sm font-medium tracking-wide"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.6 }}
       >
-        2–8 joueurs · Plis, paris &amp; missions
+        {t.home.footer}
       </motion.p>
+
+      <motion.p
+        className="mt-2 text-xs font-medium"
+        style={{ color: 'rgba(255,255,255,0.15)' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.2, duration: 0.6 }}
+      >
+        v1.1.0
+      </motion.p>
+
+      {/* ── How to play modal ── */}
+      <AnimatePresence>
+        {showHowToPlay && <HowToPlayModal onClose={() => setShowHowToPlay(false)} />}
+      </AnimatePresence>
     </main>
   );
 }

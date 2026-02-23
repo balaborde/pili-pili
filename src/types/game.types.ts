@@ -170,7 +170,7 @@ export interface ClientGameState {
   forbiddenBetValues: number[];
 
   currentTurnPlayerId: string | null;
-  turnTimeRemaining: number | null;
+  turnDeadline: number | null;
 
   isSimultaneous: boolean;
   simultaneousPlayed: string[];

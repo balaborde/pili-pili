@@ -1,8 +1,9 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Bot, X, Target, Check } from 'lucide-react';
+import { Bot, X, Target, Flag, Trophy } from 'lucide-react';
 import type { ClientGamePlayer } from '@/types/game.types';
+import { useI18n } from '@/i18n';
 
 interface PlayerInfoProps {
   player: ClientGamePlayer;
@@ -36,6 +37,7 @@ export default function PlayerInfo({
   victimOfNames,
   designatedVictimName,
 }: PlayerInfoProps) {
+  const { t } = useI18n();
   const isTurn = player.isCurrentTurn;
 
   return (
@@ -84,7 +86,7 @@ export default function PlayerInfo({
         }`}
         style={{ opacity: player.isEliminated ? 0.4 : 1 }}
       >
-        {isMe ? 'Toi' : player.name.split(' ')[0]}
+        {isMe ? t.game.meLabel : player.name.split(' ')[0]}
       </span>
 
       {/* Stats row */}
@@ -115,7 +117,7 @@ export default function PlayerInfo({
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 500 }}
           >
-            <Target size={8} />{player.bet}
+            <Flag size={8} />{player.bet}
           </motion.span>
         )}
 
@@ -128,7 +130,7 @@ export default function PlayerInfo({
               color: 'var(--accent-green)',
             }}
           >
-            <Check size={9} />{player.tricksWon}
+            <Trophy size={9} />{player.tricksWon}
           </span>
         )}
       </div>

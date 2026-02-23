@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import type { TrickCard, MissionInfo, ClientGamePlayer } from '@/types/game.types';
+import { useI18n } from '@/i18n';
 import CardComponent from './CardComponent';
 import MissionIcon from './MissionIcon';
 
@@ -22,6 +23,7 @@ export default function PlayArea({
   players,
   isSimultaneous,
 }: PlayAreaProps) {
+  const { t } = useI18n();
   const getPlayerName = (playerId: string) => {
     return players.find(p => p.id === playerId)?.name ?? '';
   };
@@ -56,8 +58,8 @@ export default function PlayArea({
         }}
       >
         {trickNumber > 0
-          ? `Pli ${trickNumber}/${totalTricks}`
-          : `${totalTricks} plis`
+          ? t.playArea.trickCounter(trickNumber, totalTricks)
+          : t.playArea.totalTricks(totalTricks)
         }
       </div>
 
@@ -79,7 +81,7 @@ export default function PlayArea({
           >
             <MissionIcon name={mission.icon} size={28} style={{ color: 'var(--text-muted)' }} />
             <span className="text-xs font-bold text-text-muted uppercase tracking-wider">
-              {isSimultaneous ? 'Simultané' : 'En attente'}
+              {isSimultaneous ? t.playArea.simultaneousLabel : t.playArea.waitingLabel}
             </span>
           </motion.div>
         )}

@@ -97,6 +97,10 @@ export class Game {
   private destroyed = false;
   private lastRoundResults: PlayerRoundResult[] | null = null;
 
+  // Turn timer
+  private turnTimer: ReturnType<typeof setTimeout> | null = null;
+  private turnDeadline: number | null = null;
+
   constructor(roomPlayers: RoomPlayer[], settings: RoomSettings, callbacks: GameCallbacks) {
     this.settings = settings;
     this.callbacks = callbacks;
@@ -137,6 +141,8 @@ export class Game {
     const currentBettorId = this.bettingOrder[this.currentBettorIndex];
     if (playerId !== currentBettorId) return { ok: false, error: 'Ce n\'est pas votre tour de parier' };
 
+    this.clearTurnTimer();
+
     const player = this.getPlayer(playerId);
     if (!player) return { ok: false, error: 'Joueur introuvable' };
 
@@ -175,6 +181,15 @@ export class Game {
 
   playCard(playerId: string, cardId: number): { ok: boolean; error?: string } {
     if (this.phase !== 'TRICK_PLAY') return { ok: false, error: 'Ce n\'est pas la phase de jeu' };
+
+    // En mode séquentiel : arrêter le timer dès qu'un joueur agit (bot ou humain),
+    // advanceTurn() en redémarrera un si le suivant est humain.
+    // En mode simultané : NE PAS toucher au timer ici — chaque client gère
+    // l'affichage individuellement. Seul resolveTrick() coupe le timer quand
+    // tous ont joué.
+    if (!this.isSimultaneous) {
+      this.clearTurnTimer();
+    }
 
     const player = this.getPlayer(playerId);
     if (!player) return { ok: false, error: 'Joueur introuvable' };
@@ -515,6 +530,12 @@ export class Game {
     }
     this.currentBettorIndex = 0;
 
+    // Start turn timer before broadcast so deadline is included in state
+    const firstBettor = this.getPlayer(this.bettingOrder[this.currentBettorIndex]);
+    if (firstBettor && !firstBettor.isBot) {
+      this.startTurnTimer();
+    }
+
     this.broadcastState();
     this.scheduleBotBetIfNeeded();
   }
@@ -526,8 +547,15 @@ export class Game {
 
     if (this.currentBettorIndex >= this.bettingOrder.length) {
       // All bets placed
+      this.clearTurnTimer();
       this.startPostBetting();
     } else {
+      // Start turn timer before broadcast so deadline is included in state
+      const nextBettor = this.getPlayer(this.bettingOrder[this.currentBettorIndex]);
+      if (nextBettor && !nextBettor.isBot) {
+        this.startTurnTimer();
+      }
+
       this.broadcastState();
       this.scheduleBotBetIfNeeded();
     }
@@ -659,10 +687,20 @@ export class Game {
     this.currentTurnIndex = 0;
 
     this.phase = 'TRICK_PLAY';
+
+    // Start turn timer before broadcast so deadline is included in state
+    if (this.isSimultaneous) {
+      this.startTurnTimer();
+    } else {
+      const firstPlayer = this.getPlayer(this.turnOrder[this.currentTurnIndex]);
+      if (firstPlayer && !firstPlayer.isBot) {
+        this.startTurnTimer();
+      }
+    }
+
     this.broadcastState();
 
     if (this.isSimultaneous) {
-      // Schedule bot plays for simultaneous
       for (const p of active) {
         if (p.isBot) this.scheduleBotPlay(p);
       }
@@ -675,6 +713,13 @@ export class Game {
     if (this.destroyed) return;
 
     this.currentTurnIndex++;
+
+    // Start turn timer before broadcast so deadline is included in state
+    const nextPlayer = this.getPlayer(this.turnOrder[this.currentTurnIndex]);
+    if (nextPlayer && !nextPlayer.isBot) {
+      this.startTurnTimer();
+    }
+
     this.broadcastState();
     this.scheduleBotPlayIfNeeded();
   }
@@ -682,6 +727,7 @@ export class Game {
   private resolveTrick(): void {
     if (this.destroyed) return;
 
+    this.clearTurnTimer();
     const winner = this.determineTrickWinner();
     const winnerPlayer = this.getPlayer(winner.winnerId);
     if (winnerPlayer) {
@@ -1400,6 +1446,77 @@ export class Game {
   }
 
   // ============================================================
+  // Turn Timer
+  // ============================================================
+
+  private startTurnTimer(): void {
+    this.clearTurnTimer();
+    const ms = this.settings.turnTimerSeconds * 1000;
+    this.turnDeadline = Date.now() + ms;
+    this.turnTimer = setTimeout(() => {
+      if (this.destroyed) return;
+      this.handleTurnTimeout();
+    }, ms);
+  }
+
+  private clearTurnTimer(): void {
+    if (this.turnTimer) {
+      clearTimeout(this.turnTimer);
+      this.turnTimer = null;
+    }
+    this.turnDeadline = null;
+  }
+
+  private handleTurnTimeout(): void {
+    if (this.phase === 'BETTING') {
+      const bettorId = this.bettingOrder[this.currentBettorIndex];
+      const player = this.getPlayer(bettorId);
+      if (!player || player.isBot) return;
+
+      const validBets = this.getValidBets(player);
+      const bet = validBets.includes(0) ? 0 : validBets[0] ?? 0;
+
+      this.callbacks.emitToPlayer(bettorId, 'game:notification', {
+        message: 'Temps écoulé !',
+        type: 'warning',
+      });
+      this.placeBet(bettorId, bet);
+    } else if (this.phase === 'TRICK_PLAY') {
+      if (this.isSimultaneous) {
+        // Auto-play for all human players who haven't played yet
+        const active = this.getActivePlayers();
+        for (const p of active) {
+          if (!p.isBot && !this.simultaneousPlayed.has(p.id) && p.hand.length > 0) {
+            this.callbacks.emitToPlayer(p.id, 'game:notification', {
+              message: 'Temps écoulé !',
+              type: 'warning',
+            });
+            const card = p.hand[0];
+            if (card.isJoker && card.value < 0) {
+              card.value = JOKER_LOW_VALUE;
+            }
+            this.playCard(p.id, card.id);
+          }
+        }
+      } else {
+        const turnPlayerId = this.turnOrder[this.currentTurnIndex];
+        const player = this.getPlayer(turnPlayerId);
+        if (!player || player.isBot || player.hand.length === 0) return;
+
+        this.callbacks.emitToPlayer(turnPlayerId, 'game:notification', {
+          message: 'Temps écoulé !',
+          type: 'warning',
+        });
+        const card = player.hand[0];
+        if (card.isJoker && card.value < 0) {
+          card.value = JOKER_LOW_VALUE;
+        }
+        this.playCard(turnPlayerId, card.id);
+      }
+    }
+  }
+
+  // ============================================================
   // State Serialization
   // ============================================================
 
@@ -1526,7 +1643,7 @@ export class Game {
       currentTurnPlayerId: this.isSimultaneous
         ? null
         : (this.turnOrder[this.currentTurnIndex] ?? null),
-      turnTimeRemaining: null,
+      turnDeadline: this.turnDeadline,
 
       isSimultaneous: this.isSimultaneous,
       simultaneousPlayed: Array.from(this.simultaneousPlayed.keys()),
@@ -1593,6 +1710,7 @@ export class Game {
       clearTimeout(this.phaseTimer);
       this.phaseTimer = null;
     }
+    this.clearTurnTimer();
   }
 
   private shuffleArray<T>(arr: T[]): T[] {
