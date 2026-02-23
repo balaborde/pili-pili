@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Bot, X, Target, Check } from 'lucide-react';
+import { Bot, X, Target, Flag, Trophy } from 'lucide-react';
 import type { ClientGamePlayer } from '@/types/game.types';
 
 interface PlayerInfoProps {
@@ -115,7 +115,7 @@ export default function PlayerInfo({
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 500 }}
           >
-            <Target size={8} />{player.bet}
+            <Flag size={8} />{player.bet}
           </motion.span>
         )}
 
@@ -128,7 +128,7 @@ export default function PlayerInfo({
               color: 'var(--accent-green)',
             }}
           >
-            <Check size={9} />{player.tricksWon}
+            <Trophy size={9} />{player.tricksWon}
           </span>
         )}
       </div>

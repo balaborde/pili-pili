@@ -1,15 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, Sprout, Flame, Skull, ChevronDown, Check } from 'lucide-react';
+import { Bot, Sprout, Flame, Skull, ChevronDown, Check, CircleHelp } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 import { useGameSocket } from '@/hooks/useGameSocket';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useRoomStore } from '@/stores/roomStore';
 import { useGameStore } from '@/stores/gameStore';
 import GameView from '@/components/game/GameView';
+import HowToPlayModal from '@/components/HowToPlayModal';
 import type { BotDifficulty, RoomSettings } from '@/types/game.types';
 
 /* ── Avatar colors per seat ── */
@@ -48,6 +49,8 @@ export default function RoomPage() {
 
   const [showSettings, setShowSettings] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const wasReadyBeforeModal = useRef(false);
 
   // Handle disconnect: clean up stores and redirect
   useEffect(() => {
@@ -192,6 +195,20 @@ export default function RoomPage() {
   const handleLeave = () => {
     socket.emit('room:leave');
     router.push('/');
+  };
+
+  const handleOpenHowToPlay = () => {
+    wasReadyBeforeModal.current = !!meReady;
+    if (meReady) socket.emit('room:toggleReady');
+    setShowHowToPlay(true);
+  };
+
+  const handleCloseHowToPlay = () => {
+    setShowHowToPlay(false);
+    if (wasReadyBeforeModal.current) {
+      socket.emit('room:toggleReady');
+      wasReadyBeforeModal.current = false;
+    }
   };
 
   const handleUpdateSettings = (partial: Partial<RoomSettings>) => {
@@ -683,7 +700,30 @@ export default function RoomPage() {
         >
           Quitter la room
         </motion.button>
+
+        {/* How to play */}
+        <motion.button
+          onClick={handleOpenHowToPlay}
+          className="w-full flex items-center justify-center gap-1.5 text-sm font-medium py-1"
+          animate={{
+            opacity: [1, 0.4, 1],
+            color: ['var(--text-secondary)', 'var(--accent-gold)', 'var(--text-secondary)'],
+          }}
+          transition={{
+            opacity: { duration: 1.8, repeat: Infinity, ease: 'easeInOut' },
+            color: { duration: 1.8, repeat: Infinity, ease: 'easeInOut' },
+          }}
+          whileHover={{ scale: 1.04, opacity: 1 }}
+          whileTap={{ scale: 0.97 }}
+        >
+          <CircleHelp size={16} />
+          Comment jouer ?
+        </motion.button>
       </motion.div>
+
+      <AnimatePresence>
+        {showHowToPlay && <HowToPlayModal onClose={handleCloseHowToPlay} />}
+      </AnimatePresence>
     </main>
   );
 }

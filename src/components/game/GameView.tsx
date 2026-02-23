@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { LogOut, Target, Check } from 'lucide-react';
+import { LogOut, Target, Flag, Trophy } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 import { useGameStore } from '@/stores/gameStore';
 import { usePlayerStore } from '@/stores/playerStore';
@@ -19,6 +19,7 @@ import TrickResult from './TrickResult';
 import RoundResults from './RoundResults';
 import GameOverModal from './GameOverModal';
 import NotificationToast from './NotificationToast';
+import TurnTimer from './TurnTimer';
 import CardComponent from './CardComponent';
 
 interface Notification {
@@ -42,22 +43,40 @@ export default function GameView() {
   const showMissionInfo = useGameStore((s) => s.showMissionInfo);
   const setShowMissionInfo = useGameStore((s) => s.setShowMissionInfo);
   const clearGameState = useGameStore((s) => s.clearGameState);
+  const settings = useRoomStore((s) => s.room?.settings);
   const setGameStarted = useRoomStore((s) => s.setGameStarted);
 
   const [showMissionReveal, setShowMissionReveal] = useState(false);
+  const [bettingReady, setBettingReady] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const prevRoundRef = useRef(0);
+  const missionRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bettingReadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const dismissMissionReveal = useCallback(() => {
+    if (missionRevealTimerRef.current) clearTimeout(missionRevealTimerRef.current);
+    setShowMissionReveal(false);
+    if (bettingReadyTimerRef.current) clearTimeout(bettingReadyTimerRef.current);
+    bettingReadyTimerRef.current = setTimeout(() => setBettingReady(true), 600);
+  }, []);
 
   // Show mission reveal on new round
   useEffect(() => {
     if (gameState?.phase === 'ROUND_START' && gameState.roundNumber !== prevRoundRef.current) {
       prevRoundRef.current = gameState.roundNumber;
+      if (missionRevealTimerRef.current) clearTimeout(missionRevealTimerRef.current);
+      if (bettingReadyTimerRef.current) clearTimeout(bettingReadyTimerRef.current);
+      setBettingReady(false);
       setShowMissionReveal(true);
-      const timer = setTimeout(() => setShowMissionReveal(false), 4000);
-      return () => clearTimeout(timer);
+      missionRevealTimerRef.current = setTimeout(dismissMissionReveal, 7000);
     }
-  }, [gameState?.phase, gameState?.roundNumber]);
+  }, [gameState?.phase, gameState?.roundNumber, dismissMissionReveal]);
+
+  useEffect(() => () => {
+    if (missionRevealTimerRef.current) clearTimeout(missionRevealTimerRef.current);
+    if (bettingReadyTimerRef.current) clearTimeout(bettingReadyTimerRef.current);
+  }, []);
 
   // Listen for game notifications
   useEffect(() => {
@@ -148,6 +167,7 @@ export default function GameView() {
     bettingConstraint,
     forbiddenBetValues,
     currentTurnPlayerId,
+    turnDeadline,
     isSimultaneous,
     simultaneousPlayed,
     missionAction,
@@ -365,23 +385,33 @@ export default function GameView() {
           isSimultaneous={isSimultaneous}
         />
 
-        {/* Status message */}
+        {/* Status message + turn timer */}
         {statusMessage && phase !== 'ROUND_START' && phase !== 'ROUND_END' && phase !== 'GAME_OVER' && (
-          <div
-            className="text-xs font-bold px-4 py-1.5 rounded-full text-center"
-            style={{
-              background: (isMyTurnToPlay || isMyTurnToBet)
-                ? 'rgba(244,162,97,0.15)'
-                : 'rgba(61,31,31,0.6)',
-              border: (isMyTurnToPlay || isMyTurnToBet)
-                ? '1px solid rgba(244,162,97,0.3)'
-                : '1px solid rgba(92,51,51,0.3)',
-              color: (isMyTurnToPlay || isMyTurnToBet)
-                ? 'var(--accent-gold)'
-                : 'var(--text-muted)',
-            }}
-          >
-            {statusMessage}
+          <div className="flex items-center gap-2">
+            {turnDeadline && (phase === 'BETTING' || phase === 'TRICK_PLAY')
+              && !(isSimultaneous && simultaneousPlayed.includes(playerId)) && (
+              <TurnTimer
+                deadline={turnDeadline}
+                duration={settings?.turnTimerSeconds ?? 30}
+                isMyTurn={isMyTurnToPlay || isMyTurnToBet}
+              />
+            )}
+            <div
+              className="text-xs font-bold px-4 py-1.5 rounded-full text-center"
+              style={{
+                background: (isMyTurnToPlay || isMyTurnToBet)
+                  ? 'rgba(244,162,97,0.15)'
+                  : 'rgba(61,31,31,0.6)',
+                border: (isMyTurnToPlay || isMyTurnToBet)
+                  ? '1px solid rgba(244,162,97,0.3)'
+                  : '1px solid rgba(92,51,51,0.3)',
+                color: (isMyTurnToPlay || isMyTurnToBet)
+                  ? 'var(--accent-gold)'
+                  : 'var(--text-muted)',
+              }}
+            >
+              {statusMessage}
+            </div>
           </div>
         )}
       </div>
@@ -419,7 +449,7 @@ export default function GameView() {
                   exit={{ opacity: 0, scale: 0.9 }}
                 >
                   <span style={{ color: 'var(--accent-gold)' }} className="flex items-center gap-1">
-                    <Target size={12} /> Pari : {me.bet}
+                    <Flag size={12} /> Pari : {me.bet}
                   </span>
                   <span
                     className="w-px h-3"
@@ -435,7 +465,7 @@ export default function GameView() {
                           : 'var(--text-secondary)',
                     }}
                   >
-                    <Check size={12} /> Plis : {me.tricksWon}/{totalTricks}
+                    <Trophy size={12} /> Plis : {me.tricksWon}/{totalTricks}
                   </span>
                 </motion.div>
               )}
@@ -478,7 +508,7 @@ export default function GameView() {
           )}
 
           {/* Betting panel */}
-          {phase === 'BETTING' && (
+          {phase === 'BETTING' && bettingReady && (
             <BettingPanel
               key="betting"
               totalTricks={totalTricks}
@@ -490,7 +520,7 @@ export default function GameView() {
           )}
 
           {/* Player hand (visible during betting and trick play, hidden when any mission action is required) */}
-          {phase !== 'ROUND_START' && phase !== 'GAME_OVER' && myHand.length > 0 && !missionAction && (
+          {phase !== 'ROUND_START' && phase !== 'GAME_OVER' && myHand.length > 0 && !missionAction && !showMissionReveal && (
             <PlayerHand
               key="hand"
               cards={myHand}
@@ -508,11 +538,11 @@ export default function GameView() {
 
       {/* Mission reveal */}
       <AnimatePresence>
-        {showMissionReveal && phase === 'ROUND_START' && (
+        {showMissionReveal && (
           <MissionReveal
             mission={mission}
             roundNumber={roundNumber}
-            onDismiss={() => setShowMissionReveal(false)}
+            onDismiss={dismissMissionReveal}
           />
         )}
       </AnimatePresence>

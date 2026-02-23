@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { CircleHelp } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 import { usePlayerStore } from '@/stores/playerStore';
 import { useRoomStore } from '@/stores/roomStore';
+import HowToPlayModal from '@/components/HowToPlayModal';
 
 /* ── Floating decorative peppers ── */
 const PEPPERS = [
@@ -83,6 +85,7 @@ export default function HomePage() {
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showHowToPlay, setShowHowToPlay] = useState(false);
 
   const handleCreate = () => {
     if (!name.trim()) {
@@ -467,15 +470,50 @@ export default function HomePage() {
         </div>
       </motion.div>
 
+      {/* ── How to play ── */}
+      <motion.button
+        className="mt-5 flex items-center gap-1.5 text-sm font-medium"
+        onClick={() => setShowHowToPlay(true)}
+        initial={{ opacity: 0 }}
+        animate={{
+          opacity: [1, 0.4, 1],
+          color: ['var(--text-secondary)', 'var(--accent-gold)', 'var(--text-secondary)'],
+        }}
+        transition={{
+          opacity: { delay: 0.9, duration: 1.8, repeat: Infinity, ease: 'easeInOut' },
+          color: { delay: 0.9, duration: 1.8, repeat: Infinity, ease: 'easeInOut' },
+        }}
+        whileHover={{ scale: 1.04, opacity: 1 }}
+        whileTap={{ scale: 0.97 }}
+      >
+        <CircleHelp size={16} />
+        Comment jouer ?
+      </motion.button>
+
       {/* ── Footer ── */}
       <motion.p
-        className="mt-8 text-text-secondary text-sm font-medium tracking-wide"
+        className="mt-5 text-text-secondary text-sm font-medium tracking-wide"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.6 }}
       >
         2–8 joueurs · Plis, paris &amp; missions
       </motion.p>
+
+      <motion.p
+        className="mt-2 text-xs font-medium"
+        style={{ color: 'rgba(255,255,255,0.15)' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.2, duration: 0.6 }}
+      >
+        v1.1.0
+      </motion.p>
+
+      {/* ── How to play modal ── */}
+      <AnimatePresence>
+        {showHowToPlay && <HowToPlayModal onClose={() => setShowHowToPlay(false)} />}
+      </AnimatePresence>
     </main>
   );
 }
