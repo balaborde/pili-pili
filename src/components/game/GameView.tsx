@@ -390,7 +390,8 @@ export default function GameView() {
         {/* Status message + turn timer */}
         {statusMessage && phase !== 'ROUND_START' && phase !== 'ROUND_END' && phase !== 'GAME_OVER' && (
           <div className="flex items-center gap-2">
-            {turnDeadline && (phase === 'BETTING' || phase === 'TRICK_PLAY')
+            {turnDeadline && (isMyTurnToPlay || isMyTurnToBet)
+              && (phase === 'BETTING' || phase === 'TRICK_PLAY')
               && !(isSimultaneous && simultaneousPlayed.includes(playerId)) && (
               <TurnTimer
                 deadline={turnDeadline}
