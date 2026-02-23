@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown, Layers } from 'lucide-react';
 import MissionIcon from './MissionIcon';
 import type { MissionInfo } from '@/types/game.types';
+import { useI18n } from '@/i18n';
 
 interface MissionInfoSheetProps {
   mission: MissionInfo;
@@ -16,6 +17,7 @@ export default function MissionInfoSheet({
   isOpen,
   onToggle,
 }: MissionInfoSheetProps) {
+  const { t } = useI18n();
   return (
     <div className="w-full max-w-md mx-auto">
       <motion.button
@@ -40,7 +42,7 @@ export default function MissionInfoSheet({
                 color: 'var(--pili-token)',
               }}
             >
-              Expert
+              {t.missionInfo.expert}
             </span>
           )}
         </div>
@@ -77,7 +79,7 @@ export default function MissionInfoSheet({
               >
                 <span className="text-xs text-text-muted flex items-center gap-1">
                   <Layers size={11} />
-                  {mission.cardsPerPlayer} carte{mission.cardsPerPlayer > 1 ? 's' : ''}
+                  {t.missionInfo.cardCount(mission.cardsPerPlayer)}
                 </span>
               </div>
             </div>

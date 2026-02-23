@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle } from 'lucide-react';
+import { useI18n } from '@/i18n';
 
 interface BettingPanelProps {
   totalTricks: number;
@@ -22,6 +23,7 @@ export default function BettingPanel({
   isMyTurn,
   onPlaceBet,
 }: BettingPanelProps) {
+  const { t } = useI18n();
   const [selectedBet, setSelectedBet] = useState<number | null>(null);
 
   if (!isMyTurn) return null;
@@ -57,10 +59,10 @@ export default function BettingPanel({
         {/* Header */}
         <div className="text-center mb-3">
           <h3 className="text-sm font-black text-accent-gold uppercase tracking-wider">
-            Votre pari
+            {t.betting.title}
           </h3>
           <p className="text-xs text-text-muted mt-0.5">
-            Combien de plis allez-vous remporter ?
+            {t.betting.subtitle}
           </p>
         </div>
 
@@ -77,10 +79,10 @@ export default function BettingPanel({
           >
             <p className="text-xs text-accent-red font-bold flex items-center justify-center gap-1">
               <AlertTriangle size={11} />
-              Somme actuelle : {bettingConstraint.sumSoFar} —
+              {t.betting.constraintInfo(bettingConstraint.sumSoFar)}
               {bettingConstraint.forbiddenBet !== null
-                ? ` Le pari ${bettingConstraint.forbiddenBet} est interdit`
-                : ' Pas de restriction'}
+                ? ` ${t.betting.forbiddenBet(bettingConstraint.forbiddenBet)}`
+                : ` ${t.betting.noRestriction}`}
             </p>
           </motion.div>
         )}
@@ -134,8 +136,8 @@ export default function BettingPanel({
           whileTap={selectedBet !== null ? { scale: 0.97 } : undefined}
         >
           {selectedBet !== null
-            ? `Parier ${selectedBet} pli${selectedBet !== 1 ? 's' : ''}`
-            : 'Choisissez un pari'}
+            ? t.betting.confirmBet(selectedBet)
+            : t.betting.chooseBet}
         </motion.button>
       </div>
     </motion.div>

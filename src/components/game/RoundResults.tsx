@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Check } from 'lucide-react';
 import type { PlayerRoundResult } from '@/types/game.types';
+import { useI18n } from '@/i18n';
 
 interface RoundResultsProps {
   results: PlayerRoundResult[];
@@ -15,6 +16,7 @@ export default function RoundResults({
   roundNumber,
   onContinue,
 }: RoundResultsProps) {
+  const { t } = useI18n();
   return (
     <motion.div
       className="fixed inset-0 z-50 flex items-center justify-center px-4"
@@ -43,7 +45,7 @@ export default function RoundResults({
           }}
         >
           <h2 className="text-lg font-black text-accent-gold">
-            Résultats — Manche {roundNumber}
+            {t.roundResults.title(roundNumber)}
           </h2>
         </div>
 
@@ -53,11 +55,11 @@ export default function RoundResults({
           <div className="flex items-center text-xs font-bold text-text-muted uppercase tracking-wider pb-2 mb-2"
             style={{ borderBottom: '1px solid rgba(92,51,51,0.3)' }}
           >
-            <span className="flex-1">Joueur</span>
-            <span className="w-10 text-center">Pari</span>
-            <span className="w-10 text-center">Plis</span>
-            <span className="w-10 text-center">Écart</span>
-            <span className="w-14 text-center">Pilis</span>
+            <span className="flex-1">{t.roundResults.colPlayer}</span>
+            <span className="w-10 text-center">{t.roundResults.colBet}</span>
+            <span className="w-10 text-center">{t.roundResults.colTricks}</span>
+            <span className="w-10 text-center">{t.roundResults.colGap}</span>
+            <span className="w-14 text-center">{t.roundResults.colPilis}</span>
           </div>
 
           {/* Player rows */}
@@ -152,7 +154,7 @@ export default function RoundResults({
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
           >
-            Continuer
+            {t.roundResults.continue}
           </motion.button>
         </div>
       </motion.div>

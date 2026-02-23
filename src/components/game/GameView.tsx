@@ -21,6 +21,7 @@ import GameOverModal from './GameOverModal';
 import NotificationToast from './NotificationToast';
 import TurnTimer from './TurnTimer';
 import CardComponent from './CardComponent';
+import { useI18n } from '@/i18n';
 
 interface Notification {
   id: string;
@@ -46,6 +47,7 @@ export default function GameView() {
   const settings = useRoomStore((s) => s.room?.settings);
   const setGameStarted = useRoomStore((s) => s.setGameStarted);
 
+  const { t } = useI18n();
   const [showMissionReveal, setShowMissionReveal] = useState(false);
   const [bettingReady, setBettingReady] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -147,7 +149,7 @@ export default function GameView() {
   if (!gameState || !playerId) {
     return (
       <main className="min-h-dvh flex items-center justify-center">
-        <p className="text-text-muted font-medium">Chargement de la partie...</p>
+        <p className="text-text-muted font-medium">{t.game.loading}</p>
       </main>
     );
   }
@@ -188,29 +190,29 @@ export default function GameView() {
 
   // Phase status message
   let statusMessage = '';
-  if (phase === 'DEALING') statusMessage = 'Distribution des cartes...';
-  else if (phase === 'PRE_BETTING') statusMessage = 'Préparation...';
+  if (phase === 'DEALING') statusMessage = t.game.dealing;
+  else if (phase === 'PRE_BETTING') statusMessage = t.game.preBetting;
   else if (phase === 'BETTING') {
-    if (isMyTurnToBet) statusMessage = 'C\'est votre tour de parier !';
+    if (isMyTurnToBet) statusMessage = t.game.myBettingTurn;
     else {
       const bettor = players.find(p => p.id === currentBettorId);
-      statusMessage = `${bettor?.name ?? '...'} est en train de parier...`;
+      statusMessage = t.game.otherBetting(bettor?.name ?? '...');
     }
   } else if (phase === 'POST_BETTING') {
-    if (missionAction) statusMessage = 'Action de mission requise !';
-    else statusMessage = 'Échanges en cours...';
+    if (missionAction) statusMessage = t.game.missionActionRequired;
+    else statusMessage = t.game.exchangeInProgress;
   } else if (phase === 'TRICK_PLAY') {
     if (isSimultaneous) {
       statusMessage = simultaneousPlayed.includes(playerId)
-        ? 'En attente des autres joueurs...'
-        : 'Jouez une carte !';
+        ? t.game.waitingOthers
+        : t.game.playACard;
     } else if (isMyTurnToPlay) {
-      statusMessage = 'C\'est votre tour !';
+      statusMessage = t.game.myPlayTurn;
     } else {
       const turner = players.find(p => p.id === currentTurnPlayerId);
-      statusMessage = `${turner?.name ?? '...'} joue...`;
+      statusMessage = t.game.otherPlaying(turner?.name ?? '...');
     }
-  } else if (phase === 'TRICK_RESOLVE') statusMessage = 'Résolution du pli...';
+  } else if (phase === 'TRICK_RESOLVE') statusMessage = t.game.resolvingTrick;
 
   // Visible hands (from other players via mission)
   const otherVisibleHands = Object.entries(visibleHands).filter(([pid]) => pid !== playerId);
@@ -247,7 +249,7 @@ export default function GameView() {
 
       {/* Leave game menu button */}
       <button
-        aria-label="Quitter la partie"
+        aria-label={t.game.leaveAriaLabel}
         className="fixed top-3 right-3 z-40 w-10 h-10 rounded-full flex items-center justify-center"
         style={{
           background: 'rgba(61,31,31,0.9)',
@@ -280,9 +282,9 @@ export default function GameView() {
               animate={{ scale: 1, y: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-black text-accent-red mb-2">Quitter la partie ?</h3>
+              <h3 className="text-lg font-black text-accent-red mb-2">{t.game.leaveTitle}</h3>
               <p className="text-xs text-text-muted mb-6">
-                Vous serez remplacé par un bot. La partie continuera sans vous.
+                {t.game.leaveBody}
               </p>
 
               <div className="flex gap-3">
@@ -297,7 +299,7 @@ export default function GameView() {
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setShowLeaveConfirm(false)}
                 >
-                  Annuler
+                  {t.game.leaveCancel}
                 </motion.button>
                 <motion.button
                   className="flex-1 rounded-xl py-3 text-sm font-bold"
@@ -313,7 +315,7 @@ export default function GameView() {
                     handleLeaveGame();
                   }}
                 >
-                  Quitter
+                  {t.game.leaveConfirm}
                 </motion.button>
               </div>
             </motion.div>
@@ -333,7 +335,7 @@ export default function GameView() {
               color: 'var(--text-secondary)',
             }}
           >
-            Manche {roundNumber}
+            {t.game.round(roundNumber)}
           </span>
         </div>
 
@@ -431,7 +433,7 @@ export default function GameView() {
             >
               <span className="text-pili" aria-hidden="true">🌶️</span>
               <span style={{ color: 'var(--text-secondary)' }}>
-                {me.pilis} pili{me.pilis !== 1 ? 's' : ''}
+                {t.game.pilis(me.pilis)}
               </span>
             </div>
 
@@ -449,7 +451,7 @@ export default function GameView() {
                   exit={{ opacity: 0, scale: 0.9 }}
                 >
                   <span style={{ color: 'var(--accent-gold)' }} className="flex items-center gap-1">
-                    <Flag size={12} /> Pari : {me.bet}
+                    <Flag size={12} /> {t.game.bet} : {me.bet}
                   </span>
                   <span
                     className="w-px h-3"
@@ -465,7 +467,7 @@ export default function GameView() {
                           : 'var(--text-secondary)',
                     }}
                   >
-                    <Trophy size={12} /> Plis : {me.tricksWon}/{totalTricks}
+                    <Trophy size={12} /> {t.game.tricks} : {me.tricksWon}/{totalTricks}
                   </span>
                 </motion.div>
               )}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Target, Layers, Flag, Flame, Sparkles,
@@ -8,68 +8,7 @@ import {
   Skull, AlertTriangle, Trophy, TrendingUp,
   RefreshCw, Zap, EyeOff,
 } from 'lucide-react';
-
-/* ── Step definitions ── */
-
-const STEPS = [
-  {
-    key: 'goal',
-    title: 'Le but du jeu',
-    accent: 'var(--accent-gold)',
-    icon: Target,
-    bullets: [
-      '2 à 8 joueurs (humains ou bots)',
-      'Chaque erreur vous coûte des pilis\u00a0🌶️',
-      'Trop de pilis et vous êtes éliminé',
-      'Le dernier debout gagne\u00a0!',
-    ],
-  },
-  {
-    key: 'cards',
-    title: 'Les cartes & les plis',
-    accent: 'var(--accent-green)',
-    icon: Layers,
-    bullets: [
-      '55 cartes numérotées de 1 à 55',
-      'La carte la plus forte remporte le pli',
-      'Le Joker vaut 0 (la plus faible) ou 56 (la plus forte)',
-    ],
-  },
-  {
-    key: 'bets',
-    title: 'Les paris',
-    accent: 'var(--accent-orange)',
-    icon: Flag,
-    bullets: [
-      'Pariez combien de plis vous allez gagner',
-      "L'ordre de pari tourne chaque manche",
-      'Le dernier parieur ne peut pas faire en sorte que le total des paris soit égal au nombre de plis',
-    ],
-  },
-  {
-    key: 'score',
-    title: 'Le score',
-    accent: 'var(--accent-red)',
-    icon: Flame,
-    bullets: [
-      "L'écart entre votre pari et vos plis = pilis reçus",
-      'Exemple\u00a0: pari 2, gagné 4 → +2\u00a0🌶️',
-      'Les missions ajoutent des bonus ou malus',
-      'Limite atteinte → éliminé de la partie',
-    ],
-  },
-  {
-    key: 'missions',
-    title: 'Les missions',
-    accent: 'var(--pili-token)',
-    icon: Sparkles,
-    bullets: [
-      'Chaque manche a une mission unique qui change les règles',
-      "Exemples\u00a0: passe de cartes, jeu simultané, paris à l'aveugle…",
-      'Les missions expert sont optionnelles et plus corsées\u00a0🌶️',
-    ],
-  },
-] as const;
+import { useI18n } from '@/i18n';
 
 /* ── Illustrations ── */
 
@@ -141,6 +80,7 @@ function CardsIllustration() {
 }
 
 function BetsIllustration() {
+  const { t } = useI18n();
   const bets = [0, 1, 2, 3];
   const selected = 2;
   const forbidden = 3;
@@ -183,17 +123,18 @@ function BetsIllustration() {
         transition={{ delay: 0.6 }}
       >
         <AlertTriangle size={12} />
-        Pari {forbidden} interdit !
+        {t.howToPlay.forbiddenBetLabel(forbidden)}
       </motion.span>
     </div>
   );
 }
 
 function ScoreIllustration() {
+  const { t } = useI18n();
   const items = [
-    { Icon: Flag, label: 'Pari', value: '2', color: 'var(--accent-gold)' },
-    { Icon: Trophy, label: 'Plis', value: '4', color: 'var(--accent-green)' },
-    { Icon: TrendingUp, label: 'Écart', value: '2', color: 'var(--accent-red)' },
+    { Icon: Flag, label: t.howToPlay.scoreBet, value: '2', color: 'var(--accent-gold)' },
+    { Icon: Trophy, label: t.howToPlay.scoreTricks, value: '4', color: 'var(--accent-green)' },
+    { Icon: TrendingUp, label: t.howToPlay.scoreGap, value: '2', color: 'var(--accent-red)' },
   ];
   return (
     <div className="flex flex-col items-center gap-2 py-2">
@@ -228,11 +169,12 @@ function ScoreIllustration() {
 }
 
 function MissionsIllustration() {
+  const { t } = useI18n();
   const missions = [
-    { Icon: RefreshCw, label: 'Passe de cartes', expert: false },
-    { Icon: Zap, label: 'Jeu simultané', expert: false },
-    { Icon: EyeOff, label: 'Paris à l\'aveugle', expert: false },
-    { Icon: Skull, label: 'Mission expert', expert: true },
+    { Icon: RefreshCw, label: t.howToPlay.missionCardPass, expert: false },
+    { Icon: Zap, label: t.howToPlay.missionSimultaneous, expert: false },
+    { Icon: EyeOff, label: t.howToPlay.missionBlind, expert: false },
+    { Icon: Skull, label: t.howToPlay.missionExpert, expert: true },
   ];
   return (
     <div className="grid grid-cols-2 gap-2 py-2">
@@ -276,8 +218,17 @@ const slideVariants = {
 /* ── Main component ── */
 
 export default function HowToPlayModal({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
   const [step, setStep] = useState(0);
   const [direction, setDirection] = useState(0);
+
+  const steps = useMemo(() => [
+    { key: 'goal', title: t.howToPlay.steps.goal.title, accent: 'var(--accent-gold)', icon: Target, bullets: t.howToPlay.steps.goal.bullets },
+    { key: 'cards', title: t.howToPlay.steps.cards.title, accent: 'var(--accent-green)', icon: Layers, bullets: t.howToPlay.steps.cards.bullets },
+    { key: 'bets', title: t.howToPlay.steps.bets.title, accent: 'var(--accent-orange)', icon: Flag, bullets: t.howToPlay.steps.bets.bullets },
+    { key: 'score', title: t.howToPlay.steps.score.title, accent: 'var(--accent-red)', icon: Flame, bullets: t.howToPlay.steps.score.bullets },
+    { key: 'missions', title: t.howToPlay.steps.missions.title, accent: 'var(--pili-token)', icon: Sparkles, bullets: t.howToPlay.steps.missions.bullets },
+  ], [t.howToPlay]);
 
   const goTo = useCallback((index: number) => {
     setDirection(index > step ? 1 : -1);
@@ -285,13 +236,13 @@ export default function HowToPlayModal({ onClose }: { onClose: () => void }) {
   }, [step]);
 
   const next = useCallback(() => {
-    if (step < STEPS.length - 1) {
+    if (step < steps.length - 1) {
       setDirection(1);
       setStep(s => s + 1);
     } else {
       onClose();
     }
-  }, [step, onClose]);
+  }, [step, onClose, steps.length]);
 
   const prev = useCallback(() => {
     if (step > 0) {
@@ -310,10 +261,10 @@ export default function HowToPlayModal({ onClose }: { onClose: () => void }) {
     return () => window.removeEventListener('keydown', handleKey);
   }, [onClose, next, prev]);
 
-  const current = STEPS[step];
+  const current = steps[step];
   const Icon = current.icon;
   const Illustration = ILLUSTRATIONS[step];
-  const isLast = step === STEPS.length - 1;
+  const isLast = step === steps.length - 1;
 
   return (
     <>
@@ -419,7 +370,7 @@ export default function HowToPlayModal({ onClose }: { onClose: () => void }) {
           <div className="px-6 pb-6 pt-3 flex flex-col gap-4">
             {/* Dots */}
             <div className="flex items-center justify-center gap-2">
-              {STEPS.map((s, i) => (
+              {steps.map((s, i) => (
                 <button
                   key={s.key}
                   onClick={() => goTo(i)}
@@ -428,8 +379,8 @@ export default function HowToPlayModal({ onClose }: { onClose: () => void }) {
                     width: i === step ? 10 : 7,
                     height: i === step ? 10 : 7,
                     borderRadius: '50%',
-                    background: i === step ? STEPS[step].accent : 'rgba(92,51,51,0.5)',
-                    border: i === step ? `2px solid ${STEPS[step].accent}` : '2px solid transparent',
+                    background: i === step ? steps[step].accent : 'rgba(92,51,51,0.5)',
+                    border: i === step ? `2px solid ${steps[step].accent}` : '2px solid transparent',
                   }}
                 />
               ))}
@@ -450,7 +401,7 @@ export default function HowToPlayModal({ onClose }: { onClose: () => void }) {
                   whileTap={{ scale: 0.97 }}
                 >
                   <ChevronLeft size={16} />
-                  Précédent
+                  {t.howToPlay.prev}
                 </motion.button>
               ) : (
                 <div className="flex-1" />
@@ -467,9 +418,9 @@ export default function HowToPlayModal({ onClose }: { onClose: () => void }) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
               >
-                {isLast ? "C'est parti !" : (
+                {isLast ? t.howToPlay.letsGo : (
                   <>
-                    Suivant
+                    {t.howToPlay.next}
                     <ChevronRight size={16} />
                   </>
                 )}

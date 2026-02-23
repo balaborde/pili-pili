@@ -11,6 +11,7 @@ import { useRoomStore } from '@/stores/roomStore';
 import { useGameStore } from '@/stores/gameStore';
 import GameView from '@/components/game/GameView';
 import HowToPlayModal from '@/components/HowToPlayModal';
+import { useI18n, LocaleSwitcher } from '@/i18n';
 import type { BotDifficulty, RoomSettings } from '@/types/game.types';
 
 /* ── Avatar colors per seat ── */
@@ -24,12 +25,6 @@ const SEAT_COLORS = [
   { bg: 'rgba(230,57,70,0.15)', border: '#ff6b6b', text: '#ff6b6b' },
   { bg: 'rgba(244,162,97,0.15)', border: '#ffb380', text: '#ffb380' },
 ];
-
-const BOT_LABELS: Record<BotDifficulty, string> = {
-  easy: 'Facile',
-  medium: 'Moyen',
-  hard: 'Expert',
-};
 
 const getBotIcon = (diff: BotDifficulty, size: number = 14) => {
   if (diff === 'easy') return <Sprout size={size} />;
@@ -46,6 +41,7 @@ export default function RoomPage() {
   const { playerId } = usePlayerStore();
   const { room } = useRoomStore();
   const gameState = useGameStore((s) => s.gameState);
+  const { t } = useI18n();
 
   const [showSettings, setShowSettings] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -160,7 +156,7 @@ export default function RoomPage() {
           >
             🌶️
           </motion.span>
-          <p className="text-text-muted font-medium">Chargement...</p>
+          <p className="text-text-muted font-medium">{t.lobby.loading}</p>
         </motion.div>
       </main>
     );
@@ -233,6 +229,7 @@ export default function RoomPage() {
 
   return (
     <main className="min-h-dvh relative overflow-hidden flex flex-col items-center px-5 py-8">
+      <LocaleSwitcher />
       {/* ── Background ── */}
       <div
         className="fixed inset-0 -z-10"
@@ -280,7 +277,7 @@ export default function RoomPage() {
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
         >
-          <span className="text-xs text-text-secondary font-medium uppercase tracking-wider">Room</span>
+          <span className="text-xs text-text-secondary font-medium uppercase tracking-wider">{t.lobby.room}</span>
           <span
             className="font-bold text-3xl tracking-[0.3em] text-accent-gold px-4 py-1.5 rounded-xl relative"
             style={{
@@ -314,7 +311,7 @@ export default function RoomPage() {
               }`}
               style={{ transition: 'opacity 0.2s' }}
             >
-              {copied ? 'Copié !' : 'Copier'}
+              {copied ? t.lobby.copied : t.lobby.copy}
             </motion.span>
           </AnimatePresence>
         </motion.button>
@@ -344,7 +341,7 @@ export default function RoomPage() {
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-text-secondary uppercase tracking-wider">
-              Joueurs
+              {t.lobby.players}
             </h2>
             <span
               className="text-xs font-bold px-2.5 py-1 rounded-lg"
@@ -412,16 +409,16 @@ export default function RoomPage() {
                                   border: '1px solid rgba(244,162,97,0.2)',
                                 }}
                               >
-                                Hôte
+                                {t.lobby.host}
                               </span>
                             )}
                             {isMe && (
-                              <span className="text-xs text-text-muted font-medium shrink-0">(toi)</span>
+                              <span className="text-xs text-text-muted font-medium shrink-0">{t.lobby.me}</span>
                             )}
                           </div>
                           {player.isBot && (
                             <span className="text-xs text-text-muted flex items-center gap-1">
-                              Bot {player.botDifficulty === 'easy' ? <Sprout size={10} /> : player.botDifficulty === 'hard' ? <Skull size={10} /> : <Flame size={10} />}
+                              {t.lobby.bot} {player.botDifficulty === 'easy' ? <Sprout size={10} /> : player.botDifficulty === 'hard' ? <Skull size={10} /> : <Flame size={10} />}
                             </span>
                           )}
                         </div>
@@ -437,7 +434,7 @@ export default function RoomPage() {
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                             >
-                              Retirer
+                              {t.lobby.remove}
                             </motion.button>
                           )
                         ) : (
@@ -450,8 +447,8 @@ export default function RoomPage() {
                             }}
                           >
                             {player.isReady ? (
-                              <span className="flex items-center gap-1">Prêt <Check size={11} /></span>
-                            ) : 'En attente...'}
+                              <span className="flex items-center gap-1">{t.lobby.ready} <Check size={11} /></span>
+                            ) : t.lobby.waiting}
                           </span>
                         )}
                       </div>
@@ -485,7 +482,7 @@ export default function RoomPage() {
               transition={{ delay: 0.3 }}
             >
               <p className="text-xs text-text-muted font-medium uppercase tracking-wider mb-2 text-center">
-                Ajouter un bot
+                {t.lobby.addBot}
               </p>
               <div className="flex gap-2">
                 {(['easy', 'medium', 'hard'] as BotDifficulty[]).map((diff) => (
@@ -506,7 +503,7 @@ export default function RoomPage() {
                     whileTap={{ scale: 0.97 }}
                   >
                     {getBotIcon(diff)}
-                    <span>{BOT_LABELS[diff]}</span>
+                    <span>{diff === 'easy' ? t.lobby.botEasy : diff === 'hard' ? t.lobby.botHard : t.lobby.botMedium}</span>
                   </motion.button>
                 ))}
               </div>
@@ -533,7 +530,7 @@ export default function RoomPage() {
           whileHover={{ borderColor: 'rgba(244,162,97,0.3)' }}
           whileTap={{ scale: 0.99 }}
         >
-          <span>Paramètres de la partie</span>
+          <span>{t.lobby.settingsTitle}</span>
           <motion.span
             animate={{ rotate: showSettings ? 180 : 0 }}
             transition={{ duration: 0.2 }}
@@ -562,8 +559,8 @@ export default function RoomPage() {
                 {/* Pili Limit */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-bold text-foreground">Limite de pilis 🌶️</p>
-                    <p className="text-xs text-text-secondary">Pilis avant élimination</p>
+                    <p className="text-xs font-bold text-foreground">{t.lobby.piliLimit}</p>
+                    <p className="text-xs text-text-secondary">{t.lobby.piliLimitSub}</p>
                   </div>
                   {isHost ? (
                     <div className="flex items-center gap-1.5">
@@ -592,8 +589,8 @@ export default function RoomPage() {
                 {/* Turn Timer */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-bold text-foreground">Timer par tour</p>
-                    <p className="text-xs text-text-secondary">Secondes par action</p>
+                    <p className="text-xs font-bold text-foreground">{t.lobby.turnTimer}</p>
+                    <p className="text-xs text-text-secondary">{t.lobby.turnTimerSub}</p>
                   </div>
                   {isHost ? (
                     <div className="flex items-center gap-1.5">
@@ -622,8 +619,8 @@ export default function RoomPage() {
                 {/* Expert Missions */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <p id="label-expert-missions" className="text-xs font-bold text-foreground">Missions expert</p>
-                    <p className="text-xs text-text-secondary">Missions plus complexes</p>
+                    <p id="label-expert-missions" className="text-xs font-bold text-foreground">{t.lobby.expertMissions}</p>
+                    <p className="text-xs text-text-secondary">{t.lobby.expertMissionsSub}</p>
                   </div>
                   {isHost ? (
                     <motion.button
@@ -649,7 +646,7 @@ export default function RoomPage() {
                     </motion.button>
                   ) : (
                     <span className={`text-xs font-bold ${room.settings.includeExpertMissions ? 'text-accent-green' : 'text-text-muted'}`}>
-                      {room.settings.includeExpertMissions ? 'Oui' : 'Non'}
+                      {room.settings.includeExpertMissions ? t.lobby.yes : t.lobby.no}
                     </span>
                   )}
                 </div>
@@ -673,7 +670,7 @@ export default function RoomPage() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
         >
-          {meReady ? 'Annuler Prêt' : 'Je suis prêt !'}
+          {meReady ? t.lobby.toggleReadyOff : t.lobby.toggleReadyOn}
         </motion.button>
 
         {/* Start game (host only) */}
@@ -686,7 +683,7 @@ export default function RoomPage() {
             whileTap={canStart ? { scale: 0.97 } : undefined}
           >
             <span className="relative">
-              {canStart ? '🌶️ Lancer la partie !' : 'Lancer la partie'}
+              {canStart ? t.lobby.startGameReady : t.lobby.startGame}
             </span>
           </motion.button>
         )}
@@ -698,7 +695,7 @@ export default function RoomPage() {
           whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
         >
-          Quitter la room
+          {t.lobby.leave}
         </motion.button>
 
         {/* How to play */}
@@ -717,7 +714,7 @@ export default function RoomPage() {
           whileTap={{ scale: 0.97 }}
         >
           <CircleHelp size={16} />
-          Comment jouer ?
+          {t.lobby.howToPlay}
         </motion.button>
       </motion.div>
 

@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 import type { PlayerRoundResult } from '@/types/game.types';
+import { useI18n } from '@/i18n';
 
 interface GameOverModalProps {
   standings: PlayerRoundResult[];
@@ -21,6 +22,7 @@ export default function GameOverModal({
   winnerId,
   onBackToLobby,
 }: GameOverModalProps) {
+  const { t } = useI18n();
   const winner = standings.find(s => s.playerId === winnerId);
 
   return (
@@ -83,11 +85,11 @@ export default function GameOverModal({
             <Trophy size={40} style={{ color: 'var(--accent-gold)' }} />
           </motion.div>
           <h2 className="text-xl font-black text-accent-gold">
-            Fin de partie !
+            {t.gameOver.title}
           </h2>
           {winner && (
             <p className="text-sm text-text-secondary mt-1">
-              <span className="font-bold text-accent-gold">{winner.playerName}</span> remporte la victoire !
+              {t.gameOver.winner(winner.playerName)}
             </p>
           )}
         </div>
@@ -150,7 +152,7 @@ export default function GameOverModal({
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
           >
-            Retour au lobby
+            {t.gameOver.backToLobby}
           </motion.button>
         </div>
       </motion.div>

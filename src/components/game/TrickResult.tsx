@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Trophy } from 'lucide-react';
 import type { TrickCard } from '@/types/game.types';
+import { useI18n } from '@/i18n';
 
 interface TrickResultProps {
   winnerId: string;
@@ -15,6 +16,7 @@ export default function TrickResult({
   winnerName,
   trick,
 }: TrickResultProps) {
+  const { t } = useI18n();
   const winningCard = trick.find(tc => tc.playerId === winnerId)?.card;
 
   return (
@@ -44,11 +46,11 @@ export default function TrickResult({
           <Trophy size={32} style={{ color: 'var(--accent-gold)' }} />
         </motion.div>
         <p className="text-sm font-black text-accent-green">
-          {winnerName} remporte le pli !
+          {t.trickResult.winsTheTrick(winnerName)}
         </p>
         {winningCard && (
           <p className="text-xs text-text-muted mt-1">
-            avec la carte {winningCard.isJoker ? '★ Joker' : winningCard.value}
+            {t.trickResult.withCard(winningCard.isJoker ? t.trickResult.jokerName : winningCard.value)}
           </p>
         )}
       </motion.div>
